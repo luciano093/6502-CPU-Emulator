@@ -113,10 +113,9 @@ impl CPU {
                     let address = self.fetch_word(&mut cycles, memory);
 
                     let effective_address = self.x as u16 + address;
-                    cycles -= 1;
 
                     // checks if page was crossed (high byte of word are the same)
-                    if (effective_address & 0xFF00) != (effective_address & 0xFF00) {
+                    if (address & 0xFF00) != (effective_address & 0xFF00) {
                         cycles -= 1;
                     }
 
@@ -128,10 +127,9 @@ impl CPU {
                     let address = self.fetch_word(&mut cycles, memory);
 
                     let effective_address = self.y as u16 + address;
-                    cycles -= 1;
 
                     // checks if page was crossed (high byte of word are the same)
-                    if (effective_address & 0xFF00) != (effective_address & 0xFF00) {
+                    if (address & 0xFF00) != (effective_address & 0xFF00) {
                         cycles -= 1;
                     }
 
@@ -166,7 +164,7 @@ impl CPU {
 
                     self.set_lda_flags();
                 }
-                _ => (),
+                _ => panic!("Tried to execute unkown instruction"),
             }
         }
     }
