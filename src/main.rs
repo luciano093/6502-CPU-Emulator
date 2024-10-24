@@ -53,37 +53,37 @@ const LDA_INDY: Byte = 0xB1;
 
 #[derive(Default)]
 struct CPU {
-    PC: Word,    // Program Counter
-    SP: Byte,   // Stack Pointer
-    A: Byte,    // Accumulator
-    X: Byte,    // Index Register X
-    Y: Byte,    // Index Register Y
-    P: Status,  // Processor Status
+    pc: Word,    // Program Counter
+    sp: Byte,   // Stack Pointer
+    a: Byte,    // Accumulator
+    x: Byte,    // Index Register X
+    y: Byte,    // Index Register Y
+    p: Status,  // Processor Status
 }
 
 impl CPU {
     fn reset(&mut self) {
-        self.PC = 0xFFFC;
-        self.SP = 0x0000; // starts at 0x0100 in stack
+        self.pc = 0xFFFC;
+        self.sp = 0x0000; // starts at 0x0100 in stack
     }
 
     /// takes 1 cycle
     fn fetch_byte(&mut self, cycles: &mut u32, memory: &mut Memory) -> Byte {
-        let byte = memory[self.PC];
-        self.PC += 1;
+        let byte = memory[self.pc];
+        self.pc += 1;
         *cycles -= 1;
         
         byte
     }
 
-    /// takes 1 cycle
+    /// takes 2 cycles
     fn fetch_word(&mut self, cycles: &mut u32, memory: &mut Memory) -> Word {
-        let low_byte = memory[self.PC];
-        self.PC += 1;
+        let low_byte = memory[self.pc];
+        self.pc += 1;
         *cycles -= 1;
 
-        let high_byte = memory[self.PC];
-        self.PC += 1;
+        let high_byte = memory[self.pc];
+        self.pc += 1;
         *cycles -= 1;
 
         // little endian
@@ -92,124 +92,126 @@ impl CPU {
         word
     }
 
+    /// `effective_address` refers to the physical memory location\
+    /// takes 1 cycle
+    fn read_memory(&mut self, cycles: &mut u32, memory: &mut Memory, effective_address: u16) -> Byte {
+        let byte= memory[effective_address];
+        *cycles -= 1;
+
+        byte
+    }
+
+    /// `effective_address` refers to the physical memory location\
+    /// takes 2 cycles
+    fn read_word_memory(&mut self, cycles: &mut u32, memory: &mut Memory, effective_address: u16) -> Word {
+        let low_byte = self.read_memory(cycles, memory, effective_address as u16);
+
+        // todo: fix what happens if high byte is at effective address greater than allowed
+        let high_byte = self.read_memory(cycles, memory, effective_address as u16 + 1);
+
+        (low_byte as u16) | ((high_byte as u16) << 8)
+    }
+
     fn execute(&mut self, mut cycles: u32, memory: &mut Memory) {
         while cycles > 0 {
             let instruction = self.fetch_byte(&mut cycles, memory);
 
             match instruction {
                 LDA_IM => {
-                    self.A = self.fetch_byte(&mut cycles, memory);
+                    self.a = self.fetch_byte(&mut cycles, memory);
 
-                    self.set_LDA_flags();
+                    self.set_lda_flags();
                 }
                 LDA_ZP => {
                     let address= self.fetch_byte(&mut cycles, memory);
-                    self.A = memory[address as u16];
-                    cycles -= 1;
+                    self.a = self.read_memory(&mut cycles, memory, address as u16);
 
-                    self.set_LDA_flags();
+                    self.set_lda_flags();
                 }
                 LDA_ZPX => {
                     let address= self.fetch_byte(&mut cycles, memory);
-                    let address = (self.X as u16 + address as u16) % 256; // % 256 wraps around
+                    let effective_address = (self.x as u16 + address as u16) % 256; // % 256 wraps around so that the max is a byte
                     cycles -= 1;
 
-                    self.A = memory[address]; 
-                    cycles -= 1;
+                    self.a = self.read_memory(&mut cycles, memory, effective_address);
 
-                    self.set_LDA_flags();
+                    self.set_lda_flags();
                 }
                 LDA_ABS => {
                     let address = self.fetch_word(&mut cycles, memory);
-                    self.A = memory[address];
-                    cycles -= 1;
+                    self.a = self.read_memory(&mut cycles, memory, address);
 
-                    self.set_LDA_flags();
+                    self.set_lda_flags();
                 }
                 LDA_ABSX => {
                     let address = self.fetch_word(&mut cycles, memory);
 
-                    let sum_address = self.X as u16 + address;
+                    let effective_address = self.x as u16 + address;
                     cycles -= 1;
 
                     // checks if page was crossed (high byte of word are the same)
-                    if (sum_address & 0xFF00) != (address & 0xFF00) {
+                    if (effective_address & 0xFF00) != (effective_address & 0xFF00) {
                         cycles -= 1;
                     }
 
-                    self.A = memory[sum_address];
-                    cycles -= 1;
+                    self.a = self.read_memory(&mut cycles, memory, effective_address);
 
-                    self.set_LDA_flags();
+                    self.set_lda_flags();
                 }
                 LDA_ABSY => {
                     let address = self.fetch_word(&mut cycles, memory);
 
-                    let sum_address = self.Y as u16 + address;
+                    let effective_address = self.y as u16 + address;
                     cycles -= 1;
 
                     // checks if page was crossed (high byte of word are the same)
-                    if (sum_address & 0xFF00) != (address & 0xFF00) {
+                    if (effective_address & 0xFF00) != (effective_address & 0xFF00) {
                         cycles -= 1;
                     }
 
-                    self.A = memory[sum_address];
-                    cycles -= 1;
+                    self.a = self.read_memory(&mut cycles, memory, effective_address);
 
-                    self.set_LDA_flags();
+                    self.set_lda_flags();
                 }
                 LDA_INDX => {
                     let address = self.fetch_byte(&mut cycles, memory);
 
-                    let sum_address = address.wrapping_add(self.X);
+                    let effective_address = address.wrapping_add(self.x);
                     cycles -= 1;
 
-                    let low_byte = memory[sum_address as u16];
-                    cycles -= 1;
+                    let effective_address = self.read_word_memory(&mut cycles, memory, effective_address as u16);
 
-                    let high_byte = memory[(sum_address + 1) as u16];
-                    cycles -= 1;
+                    self.a = self.read_memory(&mut cycles, memory, effective_address);
 
-                    let address = (low_byte as u16) | ((high_byte as u16) << 8);
-
-                    self.A = memory[address];
-                    cycles -= 1;
-
-                    self.set_LDA_flags();
+                    self.set_lda_flags();
                 }
                 LDA_INDY => {
-                    let address = self.fetch_byte(&mut cycles, memory);
+                    let effective_address = self.fetch_byte(&mut cycles, memory);
 
-                    let low_byte = memory[address as u16];
-                    cycles -= 1;
-
-                    let high_byte = memory[(address + 1) as u16];
-                    cycles -= 1;
-
-                    let address = (low_byte as u16) | ((high_byte as u16) << 8);
-                    let effective_address = address + self.Y as u16;
+                    let address = self.read_word_memory(&mut cycles, memory, effective_address as u16);
+                    let effective_address = address + self.y as u16;
                     
+                    // crosses a page
                     if (address & 0xFF00) != (effective_address & 0xFF00) {
                         cycles -= 1;
                     }
 
-                    self.A = memory[effective_address];
-                    cycles -= 1;
+                    self.a = self.read_memory(&mut cycles, memory, effective_address);
 
-                    self.set_LDA_flags();
+                    self.set_lda_flags();
                 }
                 _ => (),
             }
         }
     }
 
-    fn set_LDA_flags(&mut self) {
-        if self.A == 0 {
-            self.P |= Status::from_bits(0b00000010).unwrap();
+    fn set_lda_flags(&mut self) {
+        if self.a == 0 {
+            self.p |= Status::from_bits(0b00000010).unwrap();
         }
 
-        if self.A & 0b10000000 == 0b10000000 {
-            self.P |= Status::from_bits(0b10000000).unwrap();
+        if self.a & 0b10000000 == 0b10000000 {
+            self.p |= Status::from_bits(0b10000000).unwrap();
         }  
     }
 }
@@ -218,7 +220,7 @@ fn main() {
     let mut cpu = CPU::default();
     cpu.reset();
 
-    cpu.Y = 0x04;
+    cpu.y = 0x04;
     mem[0xFFFC] = LDA_INDY;
     mem[0xFFFD] = 0x02;
     mem[0x02] = 0x00;
@@ -227,5 +229,5 @@ fn main() {
 
     cpu.execute(6, &mut mem);
 
-    println!("Accumulator: {:04x}", cpu.A);
+    println!("Accumulator: {:04x}", cpu.a);
 }
