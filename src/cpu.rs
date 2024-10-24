@@ -78,6 +78,83 @@ impl CPU {
         (low_byte as u16) | ((high_byte as u16) << 8)
     }
 
+    fn fetch_zero_page(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+        let address= self.fetch_byte(cycles, memory);
+        self.read_memory(cycles, memory, address as u16)
+    }
+
+    fn fetch_zero_page_x(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+        let address= self.fetch_byte(cycles, memory);
+        let effective_address = (self.x as u16 + address as u16) % 256; // % 256 wraps around so that the max is a byte
+        *cycles -= 1;
+
+        self.read_memory(cycles, memory, effective_address)
+    }
+
+    fn fetch_zero_page_y(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+        let address= self.fetch_byte(cycles, memory);
+        let effective_address = (self.y as u16 + address as u16) % 256; // % 256 wraps around so that the max is a byte
+        *cycles -= 1;
+
+        self.read_memory(cycles, memory, effective_address)
+    }
+
+    fn fetch_absolute(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+        let address = self.fetch_word(cycles, memory);
+        self.read_memory(cycles, memory, address)
+    }
+
+    fn fetch_absolute_x(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+        let address = self.fetch_word(cycles, memory);
+
+        let effective_address = self.x as u16 + address;
+
+        // checks if page was crossed (high byte of word are the same)
+        if (address & 0xFF00) != (effective_address & 0xFF00) {
+            *cycles -= 1;
+        }
+
+        self.read_memory(cycles, memory, effective_address)
+    }
+
+    fn fetch_absolute_y(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+        let address = self.fetch_word(cycles, memory);
+
+        let effective_address = self.y as u16 + address;
+
+        // checks if page was crossed (high byte of word are the same)
+        if (address & 0xFF00) != (effective_address & 0xFF00) {
+            *cycles -= 1;
+        }
+
+        self.read_memory(cycles, memory, effective_address)
+    }
+
+    fn fetch_indirect_x(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+        let address = self.fetch_byte(cycles, memory);
+
+        let effective_address = address.wrapping_add(self.x);
+        *cycles -= 1;
+
+        let effective_address = self.read_word_memory(cycles, memory, effective_address as u16);
+
+        self.read_memory(cycles, memory, effective_address)
+    }
+
+    fn fetch_indirect_y(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+        let effective_address = self.fetch_byte(cycles, memory);
+
+        let address = self.read_word_memory(cycles, memory, effective_address as u16);
+        let effective_address = address + self.y as u16;
+        
+        // crosses a page
+        if (address & 0xFF00) != (effective_address & 0xFF00) {
+            *cycles -= 1;
+        }
+
+        self.read_memory(cycles, memory, effective_address)
+    }
+
     pub fn execute(&mut self, mut cycles: u32, memory: &mut Memory) {
         while cycles > 0 {
             let instruction = self.fetch_byte(&mut cycles, memory);
@@ -89,82 +166,91 @@ impl CPU {
                     self.set_lda_flags();
                 }
                 LDA_ZP => {
-                    let address= self.fetch_byte(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, address as u16);
+                    self.a = self.fetch_zero_page(&mut cycles, memory);
 
                     self.set_lda_flags();
                 }
                 LDA_ZPX => {
-                    let address= self.fetch_byte(&mut cycles, memory);
-                    let effective_address = (self.x as u16 + address as u16) % 256; // % 256 wraps around so that the max is a byte
-                    cycles -= 1;
-
-                    self.a = self.read_memory(&mut cycles, memory, effective_address);
+                    self.a = self.fetch_zero_page_x(&mut cycles, memory);
 
                     self.set_lda_flags();
                 }
                 LDA_ABS => {
-                    let address = self.fetch_word(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, address);
+                    self.a = self.fetch_absolute(&mut cycles, memory);
 
                     self.set_lda_flags();
                 }
                 LDA_ABSX => {
-                    let address = self.fetch_word(&mut cycles, memory);
-
-                    let effective_address = self.x as u16 + address;
-
-                    // checks if page was crossed (high byte of word are the same)
-                    if (address & 0xFF00) != (effective_address & 0xFF00) {
-                        cycles -= 1;
-                    }
-
-                    self.a = self.read_memory(&mut cycles, memory, effective_address);
+                    self.a = self.fetch_absolute_x(&mut cycles, memory);
 
                     self.set_lda_flags();
                 }
                 LDA_ABSY => {
-                    let address = self.fetch_word(&mut cycles, memory);
-
-                    let effective_address = self.y as u16 + address;
-
-                    // checks if page was crossed (high byte of word are the same)
-                    if (address & 0xFF00) != (effective_address & 0xFF00) {
-                        cycles -= 1;
-                    }
-
-                    self.a = self.read_memory(&mut cycles, memory, effective_address);
+                    self.a = self.fetch_absolute_y(&mut cycles, memory);
 
                     self.set_lda_flags();
                 }
                 LDA_INDX => {
-                    let address = self.fetch_byte(&mut cycles, memory);
-
-                    let effective_address = address.wrapping_add(self.x);
-                    cycles -= 1;
-
-                    let effective_address = self.read_word_memory(&mut cycles, memory, effective_address as u16);
-
-                    self.a = self.read_memory(&mut cycles, memory, effective_address);
+                    self.a = self.fetch_indirect_x(&mut cycles, memory);
 
                     self.set_lda_flags();
                 }
                 LDA_INDY => {
-                    let effective_address = self.fetch_byte(&mut cycles, memory);
-
-                    let address = self.read_word_memory(&mut cycles, memory, effective_address as u16);
-                    let effective_address = address + self.y as u16;
-                    
-                    // crosses a page
-                    if (address & 0xFF00) != (effective_address & 0xFF00) {
-                        cycles -= 1;
-                    }
-
-                    self.a = self.read_memory(&mut cycles, memory, effective_address);
+                    self.a = self.fetch_indirect_y(&mut cycles, memory);
 
                     self.set_lda_flags();
                 }
-                _ => panic!("Tried to execute unkown instruction"),
+                LDX_IM => {
+                    self.x = self.fetch_byte(&mut cycles, memory);
+
+                    self.set_ldx_flags();
+                }
+                LDX_ZP => {
+                    self.x = self.fetch_zero_page(&mut cycles, memory);
+
+                    self.set_ldx_flags();
+                }
+                LDX_ZPY => {
+                    self.x = self.fetch_zero_page_y(&mut cycles, memory);
+
+                    self.set_ldx_flags();
+                }
+                LDX_ABS => {
+                    self.x = self.fetch_absolute(&mut cycles, memory);
+
+                    self.set_ldx_flags();
+                }
+                LDX_ABSY => {
+                    self.x = self.fetch_absolute_y(&mut cycles, memory);
+
+                    self.set_ldx_flags();
+                }
+                LDY_IM => {
+                    self.y = self.fetch_byte(&mut cycles, memory);
+
+                    self.set_ldy_flags();
+                }
+                LDY_ZP => {
+                    self.y = self.fetch_zero_page(&mut cycles, memory);
+
+                    self.set_ldy_flags();
+                }
+                LDY_ZPX => {
+                    self.y = self.fetch_zero_page_x(&mut cycles, memory);
+
+                    self.set_ldy_flags();
+                }
+                LDY_ABS => {
+                    self.y = self.fetch_absolute(&mut cycles, memory);
+
+                    self.set_ldy_flags();
+                }
+                LDY_ABSX => {
+                    self.y = self.fetch_absolute_x(&mut cycles, memory);
+
+                    self.set_ldy_flags();
+                }
+                _ => panic!("Tried to execute unknown instruction"),
             }
         }
     }
@@ -177,5 +263,25 @@ impl CPU {
         if self.a & 0b10000000 == 0b10000000 {
             self.p |= Status::from_bits(0b10000000).unwrap();
         }  
+    }
+
+    fn set_ldx_flags(&mut self) {
+        if self.x == 0 {
+            self.p |= Status::from_bits(0b00000010).unwrap();
+        }
+
+        if self.x & 0b10000000 == 0b10000000 {
+            self.p |= Status::from_bits(0b10000000).unwrap();
+        } 
+    }
+
+    fn set_ldy_flags(&mut self) {
+        if self.y == 0 {
+            self.p |= Status::from_bits(0b00000010).unwrap();
+        }
+
+        if self.y & 0b10000000 == 0b10000000 {
+            self.p |= Status::from_bits(0b10000000).unwrap();
+        } 
     }
 }
