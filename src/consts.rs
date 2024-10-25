@@ -54,3 +54,21 @@ pub const TXA: Byte = 0x8A;
 
 // Transfer Y to Accumulator
 pub const TYA: Byte = 0x98;
+
+// Transfer Stack Pointer to X
+pub const TSX: Byte = 0xBA;
+
+// Transfer X to Stack Pointer
+pub const TXS: Byte = 0x9A;
+
+// Push Accumulator
+pub const PHA: Byte = 0x48;
+
+// Push Processor Status
+pub const PHP: Byte = 0x08;
+
+// Pull Accumulator
+pub const PLA: Byte = 0x68;
+
+// Pull Processor Status
+pub const PLP: Byte = 0x28;

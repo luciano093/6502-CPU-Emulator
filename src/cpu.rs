@@ -31,7 +31,7 @@ pub struct CPU {
 impl CPU {
     pub fn reset(&mut self) {
         self.pc = 0xFFFC;
-        self.sp = 0x0000; // starts at 0x0100 in stack
+        self.sp = 0xFF; // goes between 0x0100 and 0x1FF in stack
     }
 
     /// takes 1 cycle
@@ -374,6 +374,68 @@ impl CPU {
                     if self.a & 0b10000000 == 0b10000000 {
                         self.p |= Status::from_bits(0b10000000).unwrap();
                     }  
+                }
+                TSX => {
+                    self.x = self.sp;
+                    cycles -= 1;
+
+                    if self.x == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.x & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }  
+                }
+                TXS => {
+                    self.sp = self.x;
+                    cycles -= 1;
+                }
+                PHA => {
+                    // Discarded OP CODE (due to cpu design) that will be used on next cycle
+                    cycles -= 1;
+
+                    memory[self.sp as u16] = self.a;
+                    self.sp -= 1;
+                    cycles -= 1;
+                }
+                PHP => {
+                    // Discarded OP CODE (due to cpu design) that will be used on next cycle
+                    cycles -= 1;
+
+                    memory[self.sp as u16] = self.p.bits();
+                    self.sp -= 1;
+                    cycles -= 1;
+                }
+                PLA => {
+                    // Discarded OP CODE (due to cpu design) that will be used on next cycle
+                    cycles -= 1;
+
+                    // Discarded Stack Pointer Fetch (due to cpu design)
+                    cycles -= 1;
+
+                    self.sp += 1;
+                    self.a = memory[self.sp as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }  
+                }
+                PLP => {
+                    // Discarded OP CODE (due to cpu design) that will be used on next cycle
+                    cycles -= 1;
+
+                    // Discarded Stack Pointer Fetch (due to cpu design)
+                    cycles -= 1;
+
+                    self.sp += 1;
+                    self.p = Status::from_bits(memory[self.sp as u16]).unwrap();
+                    cycles -= 1;
                 }
                 _ => panic!("Tried to execute unknown instruction"),
             }
