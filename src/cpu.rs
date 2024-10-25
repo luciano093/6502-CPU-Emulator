@@ -5,6 +5,7 @@ use crate::memory::Memory;
 use crate::consts::*;
 
 bitflags! {
+    // bit 5 is unused
     #[derive(Default, Debug)]
     pub struct Status: u8 {
         const C = 0b00000001; // Carry Flag
@@ -78,33 +79,31 @@ impl CPU {
         (low_byte as u16) | ((high_byte as u16) << 8)
     }
 
-    fn fetch_zero_page(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
-        let address= self.fetch_byte(cycles, memory);
-        self.read_memory(cycles, memory, address as u16)
+    fn zero_page_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+        self.fetch_byte(cycles, memory)
     }
 
-    fn fetch_zero_page_x(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+    fn zero_page_x_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
         let address= self.fetch_byte(cycles, memory);
         let effective_address = (self.x as u16 + address as u16) % 256; // % 256 wraps around so that the max is a byte
         *cycles -= 1;
 
-        self.read_memory(cycles, memory, effective_address)
+        effective_address as u8
     }
 
-    fn fetch_zero_page_y(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+    fn zero_page_y_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
         let address= self.fetch_byte(cycles, memory);
         let effective_address = (self.y as u16 + address as u16) % 256; // % 256 wraps around so that the max is a byte
         *cycles -= 1;
 
-        self.read_memory(cycles, memory, effective_address)
+        effective_address as u8
     }
 
-    fn fetch_absolute(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
-        let address = self.fetch_word(cycles, memory);
-        self.read_memory(cycles, memory, address)
+    fn absolute_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
+        self.fetch_word(cycles, memory)
     }
 
-    fn fetch_absolute_x(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+    fn absolute_x_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
         let address = self.fetch_word(cycles, memory);
 
         let effective_address = self.x as u16 + address;
@@ -114,10 +113,10 @@ impl CPU {
             *cycles -= 1;
         }
 
-        self.read_memory(cycles, memory, effective_address)
+        effective_address
     }
 
-    fn fetch_absolute_y(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+    fn absolute_y_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
         let address = self.fetch_word(cycles, memory);
 
         let effective_address = self.y as u16 + address;
@@ -127,21 +126,19 @@ impl CPU {
             *cycles -= 1;
         }
 
-        self.read_memory(cycles, memory, effective_address)
+        effective_address
     }
 
-    fn fetch_indirect_x(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+    fn indirect_x_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
         let address = self.fetch_byte(cycles, memory);
 
         let effective_address = address.wrapping_add(self.x);
         *cycles -= 1;
 
-        let effective_address = self.read_word_memory(cycles, memory, effective_address as u16);
-
-        self.read_memory(cycles, memory, effective_address)
+        self.read_word_memory(cycles, memory, effective_address as u16)
     }
 
-    fn fetch_indirect_y(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+    fn indirect_y_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
         let effective_address = self.fetch_byte(cycles, memory);
 
         let address = self.read_word_memory(cycles, memory, effective_address as u16);
@@ -152,7 +149,7 @@ impl CPU {
             *cycles -= 1;
         }
 
-        self.read_memory(cycles, memory, effective_address)
+        effective_address
     }
 
     pub fn execute(&mut self, mut cycles: u32, memory: &mut Memory) {
@@ -166,37 +163,44 @@ impl CPU {
                     self.set_lda_flags();
                 }
                 LDA_ZP => {
-                    self.a = self.fetch_zero_page(&mut cycles, memory);
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_lda_flags();
                 }
                 LDA_ZPX => {
-                    self.a = self.fetch_zero_page_x(&mut cycles, memory);
+                    let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_lda_flags();
                 }
                 LDA_ABS => {
-                    self.a = self.fetch_absolute(&mut cycles, memory);
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_lda_flags();
                 }
                 LDA_ABSX => {
-                    self.a = self.fetch_absolute_x(&mut cycles, memory);
+                    let effective_address = self.absolute_x_addressing(&mut cycles, memory);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_lda_flags();
                 }
                 LDA_ABSY => {
-                    self.a = self.fetch_absolute_y(&mut cycles, memory);
+                    let effective_address = self.absolute_y_addressing(&mut cycles, memory);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_lda_flags();
                 }
                 LDA_INDX => {
-                    self.a = self.fetch_indirect_x(&mut cycles, memory);
+                    let effective_address = self.indirect_x_addressing(&mut cycles, memory);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_lda_flags();
                 }
                 LDA_INDY => {
-                    self.a = self.fetch_indirect_y(&mut cycles, memory);
+                    let effective_address = self.indirect_y_addressing(&mut cycles, memory);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_lda_flags();
                 }
@@ -206,22 +210,26 @@ impl CPU {
                     self.set_ldx_flags();
                 }
                 LDX_ZP => {
-                    self.x = self.fetch_zero_page(&mut cycles, memory);
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+                    self.x = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_ldx_flags();
                 }
                 LDX_ZPY => {
-                    self.x = self.fetch_zero_page_y(&mut cycles, memory);
+                    let effective_address = self.zero_page_y_addressing(&mut cycles, memory);
+                    self.x = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_ldx_flags();
                 }
                 LDX_ABS => {
-                    self.x = self.fetch_absolute(&mut cycles, memory);
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+                    self.x = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_ldx_flags();
                 }
                 LDX_ABSY => {
-                    self.x = self.fetch_absolute_y(&mut cycles, memory);
+                    let effective_address = self.absolute_y_addressing(&mut cycles, memory);
+                    self.x = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_ldx_flags();
                 }
@@ -231,24 +239,93 @@ impl CPU {
                     self.set_ldy_flags();
                 }
                 LDY_ZP => {
-                    self.y = self.fetch_zero_page(&mut cycles, memory);
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+                    self.y = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_ldy_flags();
                 }
                 LDY_ZPX => {
-                    self.y = self.fetch_zero_page_x(&mut cycles, memory);
+                    let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
+                    self.y = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_ldy_flags();
                 }
                 LDY_ABS => {
-                    self.y = self.fetch_absolute(&mut cycles, memory);
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+                    self.y = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_ldy_flags();
                 }
                 LDY_ABSX => {
-                    self.y = self.fetch_absolute_x(&mut cycles, memory);
+                    let effective_address = self.absolute_x_addressing(&mut cycles, memory);
+                    self.y = self.read_memory(&mut cycles, memory, effective_address as u16);
 
                     self.set_ldy_flags();
+                }
+                STA_ZP => {
+                    let effective_address= self.zero_page_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.a;
+                }
+                STA_ZPX => {
+                    let effective_address= self.zero_page_x_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.a;
+                }
+                STA_ABS => {
+                    let effective_address= self.absolute_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.a;
+                }
+                STA_ABSX => {
+                    let effective_address= self.absolute_x_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.a;
+                }
+                STA_ABSY => {
+                    let effective_address= self.absolute_y_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.a;
+                }
+                STA_INDX => {
+                    let effective_address= self.indirect_x_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.a;
+                }
+                STA_INDY => {
+                    let effective_address= self.indirect_y_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.a;
+                }
+                STX_ZP => {
+                    let effective_address= self.zero_page_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.x;
+                }
+                STX_ZPY => {
+                    let effective_address= self.zero_page_y_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.x;
+                }
+                STX_ABS => {
+                    let effective_address= self.absolute_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.x;
+                }
+                STY_ZP => {
+                    let effective_address= self.zero_page_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.y;
+                }
+                STY_ZPX => {
+                    let effective_address= self.zero_page_y_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.y;
+                }
+                STY_ABS => {
+                    let effective_address= self.absolute_addressing(&mut cycles, memory);
+
+                    memory[effective_address as u16] = self.y;
                 }
                 _ => panic!("Tried to execute unknown instruction"),
             }
