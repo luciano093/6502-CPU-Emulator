@@ -327,6 +327,54 @@ impl CPU {
 
                     memory[effective_address as u16] = self.y;
                 }
+                TAX => {
+                    self.x = self.a;
+                    cycles -= 1;
+
+                    if self.x == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.x & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }  
+                }
+                TAY => {
+                    self.y = self.a;
+                    cycles -= 1;
+
+                    if self.y == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.y & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }  
+                }
+                TXA => {
+                    self.a = self.x;
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }  
+                }
+                TYA => {
+                    self.a = self.y;
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }  
+                }
                 _ => panic!("Tried to execute unknown instruction"),
             }
         }
