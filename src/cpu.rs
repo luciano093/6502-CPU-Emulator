@@ -437,6 +437,333 @@ impl CPU {
                     self.p = Status::from_bits(memory[self.sp as u16]).unwrap();
                     cycles -= 1;
                 }
+                AND_IM => {
+                    self.a &= self.fetch_byte(&mut cycles, memory);
+                
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }  
+                }
+                AND_ZP => {
+                    let effectve_address = self.zero_page_addressing(&mut cycles, memory); 
+                    self.a &= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                AND_ZPX => {
+                    let effectve_address = self.zero_page_x_addressing(&mut cycles, memory); 
+                    self.a &= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                AND_ABS => {
+                    let effectve_address = self.absolute_addressing(&mut cycles, memory); 
+                    self.a &= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                AND_ABSX => {
+                    let effectve_address = self.absolute_x_addressing(&mut cycles, memory); 
+                    self.a &= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                AND_ABSY => {
+                    let effectve_address = self.absolute_y_addressing(&mut cycles, memory); 
+                    self.a &= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                AND_INDX => {
+                    let effectve_address = self.indirect_x_addressing(&mut cycles, memory); 
+                    self.a &= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                AND_INDY => {
+                    let effectve_address = self.indirect_y_addressing(&mut cycles, memory); 
+                    self.a &= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                EOR_IM => {
+                    self.a ^= self.fetch_byte(&mut cycles, memory);
+                
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }  
+                }
+                EOR_ZP => {
+                    let effectve_address = self.zero_page_addressing(&mut cycles, memory); 
+                    self.a ^= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                EOR_ZPX => {
+                    let effectve_address = self.zero_page_x_addressing(&mut cycles, memory); 
+                    self.a ^= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                EOR_ABS => {
+                    let effectve_address = self.absolute_addressing(&mut cycles, memory); 
+                    self.a ^= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                EOR_ABSX => {
+                    let effectve_address = self.absolute_x_addressing(&mut cycles, memory); 
+                    self.a ^= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                EOR_ABSY => {
+                    let effectve_address = self.absolute_y_addressing(&mut cycles, memory); 
+                    self.a ^= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                EOR_INDX => {
+                    let effectve_address = self.indirect_x_addressing(&mut cycles, memory); 
+                    self.a ^= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                EOR_INDY => {
+                    let effectve_address = self.indirect_y_addressing(&mut cycles, memory); 
+                    self.a ^= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                ORA_IM => {
+                    self.a |= self.fetch_byte(&mut cycles, memory);
+                
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }  
+                }
+                ORA_ZP => {
+                    let effectve_address = self.zero_page_addressing(&mut cycles, memory); 
+                    self.a |= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                ORA_ZPX => {
+                    let effectve_address = self.zero_page_x_addressing(&mut cycles, memory); 
+                    self.a |= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                ORA_ABS => {
+                    let effectve_address = self.absolute_addressing(&mut cycles, memory); 
+                    self.a |= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                ORA_ABSX => {
+                    let effectve_address = self.absolute_x_addressing(&mut cycles, memory); 
+                    self.a |= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                ORA_ABSY => {
+                    let effectve_address = self.absolute_y_addressing(&mut cycles, memory); 
+                    self.a |= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                ORA_INDX => {
+                    let effectve_address = self.indirect_x_addressing(&mut cycles, memory); 
+                    self.a |= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                ORA_INDY => {
+                    let effectve_address = self.indirect_y_addressing(&mut cycles, memory); 
+                    self.a |= memory[effectve_address as u16];
+                    cycles -= 1;
+
+                    if self.a == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+            
+                    if self.a & 0b10000000 == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                BIT_ZP => {
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+                    let bit_test = self.a & memory[effective_address as u16];
+                    cycles -= 1;
+                    
+                    if bit_test == 0 {
+                        self.p &= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    self.p &= Status::from_bits(bit_test & 0b11000000).unwrap();
+                }
+                BIT_ABS => {
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+                    let bit_test = self.a & memory[effective_address];
+                    
+                    if bit_test == 0 {
+                        self.p &= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    self.p &= Status::from_bits(bit_test & 0b11000000).unwrap();
+                }
                 _ => panic!("Tried to execute unknown instruction"),
             }
         }

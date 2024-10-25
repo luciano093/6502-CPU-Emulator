@@ -72,3 +72,37 @@ pub const PLA: Byte = 0x68;
 
 // Pull Processor Status
 pub const PLP: Byte = 0x28;
+
+// Logical AND
+pub const AND_IM: Byte = 0x29;
+pub const AND_ZP: Byte = 0x25;
+pub const AND_ZPX: Byte = 0x35;
+pub const AND_ABS: Byte = 0x2D;
+pub const AND_ABSX: Byte = 0x3D;
+pub const AND_ABSY: Byte = 0x39;
+pub const AND_INDX: Byte = 0x21;
+pub const AND_INDY: Byte = 0x31;
+
+// Exclusive OR
+pub const EOR_IM: Byte = 0x49;
+pub const EOR_ZP: Byte = 0x45;
+pub const EOR_ZPX: Byte = 0x55;
+pub const EOR_ABS: Byte = 0x4D;
+pub const EOR_ABSX: Byte = 0x5D;
+pub const EOR_ABSY: Byte = 0x59;
+pub const EOR_INDX: Byte = 0x41;
+pub const EOR_INDY: Byte = 0x51;
+
+// Logical Inclusive OR
+pub const ORA_IM: Byte = 0x09;
+pub const ORA_ZP: Byte = 0x05;
+pub const ORA_ZPX: Byte = 0x15;
+pub const ORA_ABS: Byte = 0x0D;
+pub const ORA_ABSX: Byte = 0x1D;
+pub const ORA_ABSY: Byte = 0x19;
+pub const ORA_INDX: Byte = 0x01;
+pub const ORA_INDY: Byte = 0x11;
+
+// Bit Test
+pub const BIT_ZP: Byte = 0x24;
+pub const BIT_ABS: Byte = 0x2C;
