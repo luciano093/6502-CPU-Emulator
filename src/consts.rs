@@ -146,3 +146,27 @@ pub const CPX_ABS: Byte = 0xEC;
 pub const CPY_IM: Byte = 0xC0;
 pub const CPY_ZP: Byte = 0xC4;
 pub const CPY_ABS: Byte = 0xCC;
+
+// Increment Memory
+pub const INC_ZP: Byte = 0xE6;
+pub const INC_ZPX: Byte = 0xF6;
+pub const INC_ABS: Byte = 0xEE;
+pub const INC_ABSX: Byte = 0xFE;
+
+// Increment X Register
+pub const INX: Byte = 0xE8;
+
+// Increment Y Register
+pub const INY: Byte = 0xC8;
+
+// Decrement Memory
+pub const DEC_ZP: Byte = 0xC6;
+pub const DEC_ZPX: Byte = 0xD6;
+pub const DEC_ABS: Byte = 0xCE;
+pub const DEC_ABSX: Byte = 0xDE;
+
+// Decrement X Register
+pub const DEX: Byte = 0xCA;
+
+// Decrement Y Register
+pub const DEY: Byte = 0x88;

@@ -1278,6 +1278,244 @@ impl CPU {
                         self.p |= Status::from_bits(0b10000000).unwrap();
                     }
                 }
+                INC_ZP => {
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+
+                    // Fetch data
+                    let mut data = memory[effective_address as u16];
+                    cycles += 1;
+
+                    // Add
+                    data += 1;
+                    cycles += 1;
+
+                    // Write modified data back to memory cycle
+                    memory[effective_address as u16] = data;
+                    cycles += 1;
+
+                    if data == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (data & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                INC_ZPX => {
+                    let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
+
+                    // Fetch data
+                    let mut data = memory[effective_address as u16];
+                    cycles += 1;
+
+                    // Add
+                    data += 1;
+                    cycles += 1;
+
+                    // Write modified data back to memory cycle
+                    memory[effective_address as u16] = data;
+                    cycles += 1;
+
+                    if data == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (data & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                INC_ABS => {
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+
+                    // Fetch data
+                    let mut data = memory[effective_address as u16];
+                    cycles += 1;
+
+                    // Add
+                    data += 1;
+                    cycles += 1;
+
+                    // Write modified data back to memory cycle
+                    memory[effective_address as u16] = data;
+                    cycles += 1;
+
+                    if data == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (data & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                INC_ABSX => {
+                    let address = self.fetch_word(&mut cycles, memory);
+
+                    let effective_address = self.x as u16 + address;
+
+                    // Discarded Data
+                    cycles += 1;
+
+                    // Fetch data
+                    let mut data = memory[effective_address as u16];
+                    cycles += 1;
+
+                    // Add
+                    data += 1;
+                    cycles += 1;
+
+                    // Write modified data back to memory cycle
+                    memory[effective_address as u16] = data;
+                    cycles += 1;
+
+                    if data == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (data & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                INX => {
+                    self.x += 1;
+
+                    if self.x == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (self.x & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                INY => {
+                    self.y += 1;
+
+                    if self.y == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (self.y & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                DEC_ZP => {
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+
+                    // Fetch data
+                    let mut data = memory[effective_address as u16];
+                    cycles += 1;
+
+                    // Subtract
+                    data -= 1;
+                    cycles += 1;
+
+                    // Write modified data back to memory cycle
+                    memory[effective_address as u16] = data;
+                    cycles += 1;
+
+                    if data == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (data & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                DEC_ZPX => {
+                    let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
+
+                    // Fetch data
+                    let mut data = memory[effective_address as u16];
+                    cycles += 1;
+
+                    // Subtract
+                    data -= 1;
+                    cycles += 1;
+
+                    // Write modified data back to memory cycle
+                    memory[effective_address as u16] = data;
+                    cycles += 1;
+
+                    if data == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (data & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                DEC_ABS => {
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+
+                    // Fetch data
+                    let mut data = memory[effective_address as u16];
+                    cycles += 1;
+
+                    // Subtract
+                    data -= 1;
+                    cycles += 1;
+
+                    // Write modified data back to memory cycle
+                    memory[effective_address as u16] = data;
+                    cycles += 1;
+
+                    if data == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (data & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                DEC_ABSX => {
+                    let address = self.fetch_word(&mut cycles, memory);
+
+                    let effective_address = self.x as u16 + address;
+
+                    // Discarded Data
+                    cycles += 1;
+
+                    // Fetch data
+                    let mut data = memory[effective_address as u16];
+                    cycles += 1;
+
+                    // Subtract
+                    data -= 1;
+                    cycles += 1;
+
+                    // Write modified data back to memory cycle
+                    memory[effective_address as u16] = data;
+                    cycles += 1;
+
+                    if data == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (data & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                DEX => {
+                    self.x -= 1;
+
+                    if self.x == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (self.x & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                DEY => {
+                    self.y -= 1;
+
+                    if self.y == 0 {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if (self.y & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
                 _ => panic!("Tried to execute unknown instruction"),
             }
         }
