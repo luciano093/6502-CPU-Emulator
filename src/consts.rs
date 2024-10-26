@@ -198,3 +198,13 @@ pub const ROR_ZP: Byte = 0x66;
 pub const ROR_ZPX: Byte = 0x76;
 pub const ROR_ABS: Byte = 0x6E;
 pub const ROR_ABSX: Byte = 0x7E;
+
+// Jump
+pub const JMP_ABS: Byte = 0x4C;
+pub const JMP_IND: Byte = 0x6C;
+
+// Jump to Subroutine
+pub const JSR: Byte = 0x20;
+
+// Return from Subroutine
+pub const RTS: Byte = 0x60;

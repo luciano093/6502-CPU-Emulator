@@ -136,6 +136,15 @@ impl CPU {
     }
 
     /// takes 4 cycles
+    fn indirect_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
+        let effective_address = self.fetch_word(cycles, memory);
+
+        let effective_address= self.read_word_memory(cycles, memory, effective_address);
+
+        effective_address
+    }
+
+    /// takes 4 cycles
     fn indirect_x_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
         let address = self.fetch_byte(cycles, memory);
 
@@ -163,6 +172,8 @@ impl CPU {
     pub fn execute(&mut self, mut cycles: u32, memory: &mut Memory) {
         while cycles > 0 {
             let instruction = self.fetch_byte(&mut cycles, memory);
+
+            println!("instruction: {:02X}, cycles left: {}", instruction, cycles + 1);
 
             match instruction {
                 LDA_IM => {
@@ -1377,6 +1388,7 @@ impl CPU {
                 }
                 INX => {
                     self.x += 1;
+                    cycles -= 1;
 
                     if self.x == 0 {
                         self.p |= Status::from_bits(0b00000010).unwrap();
@@ -1388,6 +1400,7 @@ impl CPU {
                 }
                 INY => {
                     self.y += 1;
+                    cycles -= 1;
 
                     if self.y == 0 {
                         self.p |= Status::from_bits(0b00000010).unwrap();
@@ -2025,6 +2038,53 @@ impl CPU {
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p |= Status::from_bits(0b10000000).unwrap();
                     }
+                }
+                JMP_ABS => {
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+                    self.pc = effective_address;
+                }
+                JMP_IND => {
+                    let effective_address = self.indirect_addressing(&mut cycles, memory);
+                    self.pc = effective_address;
+                }
+                JSR => {
+                    let low_byte = self.fetch_byte(&mut cycles, memory);
+
+                    // Discarded data
+                    cycles -= 1;
+
+                    memory[self.sp as u16] = (self.pc >> 8) as u8;
+                    self.sp -= 1;
+                    cycles -= 1;
+
+                    memory[self.sp as u16] = self.pc as u8;
+                    self.sp -= 1;
+                    cycles -= 1;
+
+                    let high_byte = self.fetch_byte(&mut cycles, memory);
+
+                    self.pc = ((high_byte as u16) << 8) | low_byte as u16;
+                }
+                RTS => {
+                    // Discarded data
+                    cycles -= 1;
+
+                    // Discarded data
+                    cycles -= 1;
+
+                    self.sp += 1;
+                    let low_byte = memory[self.sp as u16];
+                    cycles -= 1;
+
+                    self.sp += 1;
+                    let high_byte = memory[self.sp as u16];
+                    cycles -= 1;
+
+                    // Discarded data
+                    cycles -= 1;
+
+                    self.pc = ((high_byte as u16) << 8) | low_byte as u16;
+                    self.pc += 1;
                 }
                 _ => panic!("Tried to execute unknown instruction"),
             }
