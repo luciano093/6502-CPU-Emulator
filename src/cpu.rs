@@ -30,7 +30,7 @@ pub struct CPU {
 
 impl CPU {
     pub fn reset(&mut self, memory: &Memory) {
-        self.pc = memory[0xFFFC] as u16 & ((memory[0xFFFD] as u16) << 8);
+        self.pc = memory[0xFFFC] as u16 | ((memory[0xFFFD] as u16) << 8);
         self.sp = 0xFF; // goes between 0x0100 and 0x1FF in stack
     }
 
