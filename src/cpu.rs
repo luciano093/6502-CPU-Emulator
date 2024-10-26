@@ -20,7 +20,7 @@ bitflags! {
 
 #[derive(Default)]
 pub struct CPU {
-    pub pc: Word,    // Program Counter
+    pub pc: Word,   // Program Counter
     pub sp: Byte,   // Stack Pointer
     pub a: Byte,    // Accumulator
     pub x: Byte,    // Index Register X
@@ -29,8 +29,8 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn reset(&mut self) {
-        self.pc = 0xFFFC;
+    pub fn reset(&mut self, memory: &Memory) {
+        self.pc = memory[0xFFFC] as u16 & ((memory[0xFFFD] as u16) << 8);
         self.sp = 0xFF; // goes between 0x0100 and 0x1FF in stack
     }
 
@@ -79,10 +79,12 @@ impl CPU {
         (low_byte as u16) | ((high_byte as u16) << 8)
     }
 
+    /// takes 1 cycle
     fn zero_page_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
         self.fetch_byte(cycles, memory)
     }
 
+    /// takes 2 cycles
     fn zero_page_x_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
         let address= self.fetch_byte(cycles, memory);
         let effective_address = (self.x as u16 + address as u16) % 256; // % 256 wraps around so that the max is a byte
@@ -91,6 +93,7 @@ impl CPU {
         effective_address as u8
     }
 
+    /// takes 2 cycles
     fn zero_page_y_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
         let address= self.fetch_byte(cycles, memory);
         let effective_address = (self.y as u16 + address as u16) % 256; // % 256 wraps around so that the max is a byte
@@ -99,10 +102,12 @@ impl CPU {
         effective_address as u8
     }
 
+    /// takes 2 cycles
     fn absolute_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
         self.fetch_word(cycles, memory)
     }
 
+    /// takes 2-3 cycles depending on if page was crossed
     fn absolute_x_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
         let address = self.fetch_word(cycles, memory);
 
@@ -116,6 +121,7 @@ impl CPU {
         effective_address
     }
 
+    /// takes 2-3 cycles depending on if page was crossed
     fn absolute_y_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
         let address = self.fetch_word(cycles, memory);
 
@@ -129,6 +135,7 @@ impl CPU {
         effective_address
     }
 
+    /// takes 4 cycles
     fn indirect_x_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
         let address = self.fetch_byte(cycles, memory);
 
@@ -138,6 +145,7 @@ impl CPU {
         self.read_word_memory(cycles, memory, effective_address as u16)
     }
 
+    /// takes 3-4 cycles depending on if page was crossed
     fn indirect_y_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
         let effective_address = self.fetch_byte(cycles, memory);
 
@@ -749,7 +757,7 @@ impl CPU {
                     cycles -= 1;
                     
                     if bit_test == 0 {
-                        self.p &= Status::from_bits(0b00000010).unwrap();
+                        self.p |= Status::from_bits(0b00000010).unwrap();
                     }
 
                     self.p &= Status::from_bits(bit_test & 0b11000000).unwrap();
@@ -759,10 +767,516 @@ impl CPU {
                     let bit_test = self.a & memory[effective_address];
                     
                     if bit_test == 0 {
-                        self.p &= Status::from_bits(0b00000010).unwrap();
+                        self.p |= Status::from_bits(0b00000010).unwrap();
                     }
 
                     self.p &= Status::from_bits(bit_test & 0b11000000).unwrap();
+                }
+                ADC_IM => {
+                    let byte = self.fetch_byte(&mut cycles, memory);
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                ADC_ZP => {
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+                    let byte = memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                ADC_ZPX => {
+                    let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
+                    let byte = memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                ADC_ABS => {
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+                    let byte = memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                ADC_ABSX => {
+                    let effective_address = self.absolute_x_addressing(&mut cycles, memory);
+                    let byte = memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                ADC_ABSY => {
+                    let effective_address = self.absolute_y_addressing(&mut cycles, memory);
+                    let byte = memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                ADC_INDX => {
+                    let effective_address = self.indirect_x_addressing(&mut cycles, memory);
+                    let byte = memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                ADC_INDY => {
+                    let effective_address = self.indirect_y_addressing(&mut cycles, memory);
+                    let byte = memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                // Same as ADC but with bit negation on the byte from memory
+                SBC_IM => {
+                    let byte = !self.fetch_byte(&mut cycles, memory);
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                SBC_ZP => {
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+                    let byte = !memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                SBC_ZPX => {
+                    let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
+                    let byte = !memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                SBC_ABS => {
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+                    let byte = !memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                SBC_ABSX => {
+                    let effective_address = self.absolute_x_addressing(&mut cycles, memory);
+                    let byte = !memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                SBC_ABSY => {
+                    let effective_address = self.absolute_y_addressing(&mut cycles, memory);
+                    let byte = !memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                SBC_INDX => {
+                    let effective_address = self.indirect_x_addressing(&mut cycles, memory);
+                    let byte = !memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                SBC_INDY => {
+                    let effective_address = self.indirect_y_addressing(&mut cycles, memory);
+                    let byte = !memory[effective_address as u16];
+                    cycles -= 1;
+
+                    let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
+
+                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                        let (new_a, carry_overflow) = a.overflowing_add(1);
+
+                        a = new_a;
+                        a_overflow |= carry_overflow;
+                    }
+
+                    self.a = a;
+
+                    self.set_adc_sbc_flags(a_overflow, byte);
+                }
+                CMP_IM => {
+                    let byte = self.fetch_byte(&mut cycles, memory);
+
+                    if self.a >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.a == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CMP_ZP => {
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.a >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.a == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CMP_ZPX => {
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.a >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.a == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CMP_ABS => {
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.a >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.a == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CMP_ABSX => {
+                    let effective_address = self.absolute_x_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.a >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.a == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CMP_ABSY => {
+                    let effective_address = self.absolute_y_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.a >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.a == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CMP_INDX => {
+                    let effective_address = self.indirect_x_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.a >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.a == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CMP_INDY => {
+                    let effective_address = self.indirect_y_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.a >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.a == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CPX_IM => {
+                    let byte = self.fetch_byte(&mut cycles, memory);
+
+                    if self.x >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.x == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.x >= byte && ((self.x - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CPX_ZP => {
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.x >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.x == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.x >= byte && ((self.x - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CPX_ABS => {
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.x >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.x == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.x >= byte && ((self.x - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CPY_IM => {
+                    let byte = self.fetch_byte(&mut cycles, memory);
+
+                    if self.y >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.y == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CPY_ZP => {
+                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.y >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.y == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
+                }
+                CPY_ABS => {
+                    let effective_address = self.absolute_addressing(&mut cycles, memory);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+
+                    if self.y >= byte {
+                        self.p |= Status::from_bits(0b00000001).unwrap();
+                    }
+
+                    if self.y == byte {
+                        self.p |= Status::from_bits(0b00000010).unwrap();
+                    }
+
+                    if self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000 {
+                        self.p |= Status::from_bits(0b10000000).unwrap();
+                    }
                 }
                 _ => panic!("Tried to execute unknown instruction"),
             }
@@ -797,5 +1311,32 @@ impl CPU {
         if self.y & 0b10000000 == 0b10000000 {
             self.p |= Status::from_bits(0b10000000).unwrap();
         } 
+    }
+
+    fn set_adc_sbc_flags(&mut self, overflow: bool, initial_value: u8) {
+        if overflow {
+            println!("found carry");
+            // carry flag set
+            self.p |= Status::from_bits(0b00000001).unwrap();
+        }
+
+        // on incorrect sign
+        if (initial_value & 0b10000000) != (self.a & 0b10000000) {
+            println!("found overflow");
+            // overflow flag set
+            self.p |= Status::from_bits(0b01000000).unwrap();
+        }
+
+        if self.a == 0 {
+            // zero flag set
+            self.p |= Status::from_bits(0b00000010).unwrap();
+        }
+
+        // if A has negative bit on
+        if (self.a & 0b10000000) == 0b1000000 {
+            // negative flag set
+            self.p |= Status::from_bits(0b10000000).unwrap();
+
+        }
     }
 }

@@ -106,3 +106,43 @@ pub const ORA_INDY: Byte = 0x11;
 // Bit Test
 pub const BIT_ZP: Byte = 0x24;
 pub const BIT_ABS: Byte = 0x2C;
+
+// Add with Carry
+pub const ADC_IM: Byte = 0x69;
+pub const ADC_ZP: Byte = 0x65;
+pub const ADC_ZPX: Byte = 0x75;
+pub const ADC_ABS: Byte = 0x6D;
+pub const ADC_ABSX: Byte = 0x7D;
+pub const ADC_ABSY: Byte = 0x79;
+pub const ADC_INDX: Byte = 0x61;
+pub const ADC_INDY: Byte = 0x71;
+
+// Substract with Carry
+pub const SBC_IM: Byte = 0xE9;
+pub const SBC_ZP: Byte = 0xE5;
+pub const SBC_ZPX: Byte = 0xF5;
+pub const SBC_ABS: Byte = 0xED;
+pub const SBC_ABSX: Byte = 0xFD;
+pub const SBC_ABSY: Byte = 0xF9;
+pub const SBC_INDX: Byte = 0xE1;
+pub const SBC_INDY: Byte = 0xF1;
+
+// Compare
+pub const CMP_IM: Byte = 0xC9;
+pub const CMP_ZP: Byte = 0xC5;
+pub const CMP_ZPX: Byte = 0xD5;
+pub const CMP_ABS: Byte = 0xCD;
+pub const CMP_ABSX: Byte = 0xDD;
+pub const CMP_ABSY: Byte = 0xD9;
+pub const CMP_INDX: Byte = 0xC1;
+pub const CMP_INDY: Byte = 0xD1;
+
+// Compare X Register
+pub const CPX_IM: Byte = 0xE0;
+pub const CPX_ZP: Byte = 0xE4;
+pub const CPX_ABS: Byte = 0xEC;
+
+// Compare Y Register
+pub const CPY_IM: Byte = 0xC0;
+pub const CPY_ZP: Byte = 0xC4;
+pub const CPY_ABS: Byte = 0xCC;
