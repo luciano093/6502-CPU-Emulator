@@ -12,11 +12,10 @@ fn main() {
 
     // cpu.p |= Status::from_bits(0b00000001).unwrap();
     cpu.a = 0xFF;
-    mem[0xE000] = CMP_IM;
-    mem[0xE001] = 0xFF;
+    mem[0xE000] = ASL_A;
 
     cpu.execute(2, &mut mem);
 
-    println!("final A: {}", cpu.a);
+    println!("final A: {}/{:02x}/{:08b}", cpu.a, cpu.a, cpu.a);
     println!("flags: {:08b}", cpu.p.bits());
 }

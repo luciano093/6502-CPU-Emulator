@@ -170,3 +170,31 @@ pub const DEX: Byte = 0xCA;
 
 // Decrement Y Register
 pub const DEY: Byte = 0x88;
+
+// Arithmetic Shift Left
+pub const ASL_A: Byte = 0x0A;
+pub const ASL_ZP: Byte = 0x06;
+pub const ASL_ZPX: Byte = 0x16;
+pub const ASL_ABS: Byte = 0x0E;
+pub const ASL_ABSX: Byte = 0x1E;
+
+// Logical Shift Right
+pub const LSR_A: Byte = 0x4A;
+pub const LSR_ZP: Byte = 0x46;
+pub const LSR_ZPX: Byte = 0x56;
+pub const LSR_ABS: Byte = 0x4E;
+pub const LSR_ABSX: Byte = 0x5E;
+
+// Rotate Left
+pub const ROL_A: Byte = 0x2A;
+pub const ROL_ZP: Byte = 0x26;
+pub const ROL_ZPX: Byte = 0x36;
+pub const ROL_ABS: Byte = 0x2E;
+pub const ROL_ABSX: Byte = 0x3E;
+
+// Rotate Right
+pub const ROR_A: Byte = 0x6A;
+pub const ROR_ZP: Byte = 0x66;
+pub const ROR_ZPX: Byte = 0x76;
+pub const ROR_ABS: Byte = 0x6E;
+pub const ROR_ABSX: Byte = 0x7E;
