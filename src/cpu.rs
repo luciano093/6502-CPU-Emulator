@@ -3,6 +3,7 @@ use crate::consts::LDA_INDY;
 use crate::{Byte, Word};
 use crate::consts::*;
 
+
 bitflags! {
     // bit 5 is unused
     #[derive(Default, Debug)]
@@ -14,6 +15,73 @@ bitflags! {
         const B = 0b00010000; // Break Command Flag
         const V = 0b01000000; // Overflow Flag
         const N = 0b10000000; // Negative Flag
+    }
+}
+
+impl From<u8> for Status {
+    fn from(value: u8) -> Self {
+        Status::from_bits(value).unwrap_or_else(|| {
+            // handle 5th bit being set
+            Status::from_bits(value & 0b11011111).unwrap()
+        })
+    }
+}
+
+impl Status {
+    pub fn set_carry(&mut self, state: bool) {
+        self.set(0b00000001.into(), state);
+    }
+
+    pub const fn carry_flag(&self) -> bool {
+        self.bits() & 0b00000001 == 0b00000001
+    }
+
+    pub fn set_zero(&mut self, state: bool) {
+        self.set(0b00000010.into(), state);
+    }
+
+    pub const fn zero_flag(&self) -> bool {
+        self.bits() & 0b00000010 == 0b00000010
+    }
+
+    pub fn set_interruptor(&mut self, state: bool) {
+        self.set(0b00000100.into(), state);
+    }
+
+    pub const fn interruptor_flag(&self) -> bool {
+        self.bits() & 0b00000100 == 0b00000100
+    }
+
+    pub fn set_decimal(&mut self, state: bool) {
+        self.set(0b00001000.into(), state);
+    }
+
+    pub const fn decimal_flag(&self) -> bool {
+        self.bits() & 0b00001000 == 0b00001000
+    }
+
+    pub fn set_break(&mut self, state: bool) {
+        self.set(0b00010000.into(), state);
+    }
+
+    pub const fn break_flag(&self) -> bool {
+        self.bits() & 0b00010000 == 0b00010000
+    }
+
+    pub fn set_overflow(&mut self, state: bool) {
+        self.set(0b01000000.into(), state);
+    }
+
+    pub const fn overflow_flag(&self) -> bool {
+        self.bits() & 0b01000000 == 0b01000000
+    }
+
+    pub fn set_negative(&mut self, state: bool) {
+        self.set(0b10000000.into(), state);
+    }
+
+    pub const fn negative_flag(&self) -> bool {
+        self.bits() & 0b10000000 == 0b10000000
     }
 }
 
@@ -350,11 +418,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.x == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.x & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }  
                 }
                 TAY => {
@@ -362,11 +430,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.y == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.y & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }  
                 }
                 TXA => {
@@ -374,11 +442,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }  
                 }
                 TYA => {
@@ -386,11 +454,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }  
                 }
                 TSX => {
@@ -398,11 +466,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.x == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.x & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }  
                 }
                 TXS => {
@@ -437,11 +505,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }  
                 }
                 PLP => {
@@ -459,11 +527,11 @@ impl CPU {
                     self.a &= self.fetch_byte(&mut cycles, memory);
                 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }  
                 }
                 AND_ZP => {
@@ -472,11 +540,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 AND_ZPX => {
@@ -485,11 +553,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 AND_ABS => {
@@ -498,11 +566,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 AND_ABSX => {
@@ -511,11 +579,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 AND_ABSY => {
@@ -524,11 +592,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 AND_INDX => {
@@ -537,11 +605,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 AND_INDY => {
@@ -550,22 +618,22 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 EOR_IM => {
                     self.a ^= self.fetch_byte(&mut cycles, memory);
                 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }  
                 }
                 EOR_ZP => {
@@ -574,11 +642,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 EOR_ZPX => {
@@ -587,11 +655,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 EOR_ABS => {
@@ -600,11 +668,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 EOR_ABSX => {
@@ -613,11 +681,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 EOR_ABSY => {
@@ -626,11 +694,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 EOR_INDX => {
@@ -639,11 +707,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 EOR_INDY => {
@@ -652,22 +720,22 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ORA_IM => {
                     self.a |= self.fetch_byte(&mut cycles, memory);
                 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }  
                 }
                 ORA_ZP => {
@@ -676,11 +744,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ORA_ZPX => {
@@ -689,11 +757,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ORA_ABS => {
@@ -702,11 +770,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ORA_ABSX => {
@@ -715,11 +783,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ORA_ABSY => {
@@ -728,11 +796,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ORA_INDX => {
@@ -741,11 +809,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ORA_INDY => {
@@ -754,11 +822,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
             
                     if self.a & 0b10000000 == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 BIT_ZP => {
@@ -767,7 +835,7 @@ impl CPU {
                     cycles -= 1;
                     
                     if bit_test == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     self.p &= Status::from_bits(bit_test & 0b11000000).unwrap();
@@ -777,7 +845,7 @@ impl CPU {
                     let bit_test = self.a & memory[effective_address as usize];
                     
                     if bit_test == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     self.p &= Status::from_bits(bit_test & 0b11000000).unwrap();
@@ -787,7 +855,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -805,7 +873,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -823,7 +891,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -841,7 +909,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -859,7 +927,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -877,7 +945,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -895,7 +963,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -913,7 +981,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -930,7 +998,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -948,7 +1016,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -966,7 +1034,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -984,7 +1052,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -1002,7 +1070,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -1020,7 +1088,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -1038,7 +1106,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -1056,7 +1124,7 @@ impl CPU {
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
 
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         let (new_a, carry_overflow) = a.overflowing_add(1);
 
                         a = new_a;
@@ -1071,15 +1139,15 @@ impl CPU {
                     let byte = self.fetch_byte(&mut cycles, memory);
 
                     if self.a >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.a == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CMP_ZP => {
@@ -1087,15 +1155,15 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.a == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CMP_ZPX => {
@@ -1103,15 +1171,15 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.a == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CMP_ABS => {
@@ -1119,15 +1187,15 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.a == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CMP_ABSX => {
@@ -1135,15 +1203,15 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.a == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CMP_ABSY => {
@@ -1151,15 +1219,15 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.a == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CMP_INDX => {
@@ -1167,15 +1235,15 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.a == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CMP_INDY => {
@@ -1183,30 +1251,30 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.a == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.a >= byte && ((self.a - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CPX_IM => {
                     let byte = self.fetch_byte(&mut cycles, memory);
 
                     if self.x >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.x == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.x >= byte && ((self.x - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CPX_ZP => {
@@ -1214,15 +1282,15 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.x >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.x == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.x >= byte && ((self.x - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CPX_ABS => {
@@ -1230,30 +1298,30 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.x >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.x == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.x >= byte && ((self.x - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CPY_IM => {
                     let byte = self.fetch_byte(&mut cycles, memory);
 
                     if self.y >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.y == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CPY_ZP => {
@@ -1261,15 +1329,15 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.y >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.y == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 CPY_ABS => {
@@ -1277,15 +1345,15 @@ impl CPU {
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.y >= byte {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     }
 
                     if self.y == byte {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 INC_ZP => {
@@ -1304,11 +1372,11 @@ impl CPU {
                     cycles -= 1;
 
                     if data == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (data & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 INC_ZPX => {
@@ -1327,11 +1395,11 @@ impl CPU {
                     cycles -= 1;
 
                     if data == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (data & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 INC_ABS => {
@@ -1350,11 +1418,11 @@ impl CPU {
                     cycles -= 1;
 
                     if data == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (data & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 INC_ABSX => {
@@ -1378,11 +1446,11 @@ impl CPU {
                     cycles -= 1;
 
                     if data == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (data & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 INX => {
@@ -1390,11 +1458,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.x == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (self.x & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 INY => {
@@ -1402,11 +1470,11 @@ impl CPU {
                     cycles -= 1;
 
                     if self.y == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (self.y & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 DEC_ZP => {
@@ -1425,11 +1493,11 @@ impl CPU {
                     cycles -= 1;
 
                     if data == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (data & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 DEC_ZPX => {
@@ -1448,11 +1516,11 @@ impl CPU {
                     cycles -= 1;
 
                     if data == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (data & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 DEC_ABS => {
@@ -1471,11 +1539,11 @@ impl CPU {
                     cycles -= 1;
 
                     if data == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (data & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 DEC_ABSX => {
@@ -1499,33 +1567,33 @@ impl CPU {
                     cycles -= 1;
 
                     if data == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (data & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 DEX => {
                     self.x -= 1;
 
                     if self.x == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (self.x & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 DEY => {
                     self.y -= 1;
 
                     if self.y == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (self.y & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ASL_A => {
@@ -1534,17 +1602,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_a & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (self.a & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ASL_ZP => {
@@ -1558,17 +1626,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ASL_ZPX => {
@@ -1582,17 +1650,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ASL_ABS => {
@@ -1606,17 +1674,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ASL_ABSX => {
@@ -1635,17 +1703,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 LSR_A => {
@@ -1654,17 +1722,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_a & 0b00000001) == 0b00000001 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true);
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (self.a & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 LSR_ZP => {
@@ -1678,17 +1746,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 LSR_ZPX => {
@@ -1702,17 +1770,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 LSR_ABS => {
@@ -1726,17 +1794,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 LSR_ABSX => {
@@ -1755,17 +1823,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ROL_A => {
@@ -1775,17 +1843,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_a & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (self.a & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ROL_ZP => {
@@ -1800,17 +1868,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ROL_ZPX => {
@@ -1825,17 +1893,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ROL_ABS => {
@@ -1850,17 +1918,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ROL_ABSX => {
@@ -1880,23 +1948,23 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ROR_A => {
                     let old_a = self.a;
                     self.a >>= 1;
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         self.a |= 0b10000000;
                     } else {
                         self.a &= 0b01111111;
@@ -1904,17 +1972,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_a & 0b00000001) == 0b00000001 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if self.a == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (self.a & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ROR_ZP => {
@@ -1922,7 +1990,7 @@ impl CPU {
                     let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let mut new_byte = old_byte >> 1;
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         new_byte |= 0b10000000;
                     } else {
                         new_byte &= 0b01111111;
@@ -1933,17 +2001,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ROR_ZPX => {
@@ -1951,7 +2019,7 @@ impl CPU {
                     let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let mut new_byte = old_byte >> 1;
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         new_byte |= 0b10000000;
                     } else {
                         new_byte &= 0b01111111;
@@ -1962,17 +2030,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ROR_ABS => {
@@ -1980,7 +2048,7 @@ impl CPU {
                     let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let mut new_byte = old_byte >> 1;
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         new_byte |= 0b10000000;
                     } else {
                         new_byte &= 0b01111111;
@@ -1991,17 +2059,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 ROR_ABSX => {
@@ -2014,7 +2082,7 @@ impl CPU {
                     cycles -= 1;
 
                     let mut new_byte = old_byte >> 1;
-                    if (self.p.bits() & 0b00000001) == 0b00000001 {
+                    if self.p.carry_flag() {
                         new_byte |= 0b10000000;
                     } else {
                         new_byte &= 0b01111111;
@@ -2025,17 +2093,17 @@ impl CPU {
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b00000001).unwrap();
+                        self.p.set_carry(true)
                     } else {
-                        self.p &= Status::from_bits(0b01111111).unwrap();
+                        self.p.set_negative(false);
                     }
 
                     if new_byte == 0 {
-                        self.p |= Status::from_bits(0b00000010).unwrap();
+                        self.p.set_zero(true);
                     }
 
                     if (new_byte & 0b10000000) == 0b10000000 {
-                        self.p |= Status::from_bits(0b10000000).unwrap();
+                        self.p.set_negative(true);
                     }
                 }
                 JMP_ABS => {
@@ -2092,31 +2160,31 @@ impl CPU {
 
     fn set_lda_flags(&mut self) {
         if self.a == 0 {
-            self.p |= Status::from_bits(0b00000010).unwrap();
+            self.p.set_zero(true);
         }
 
         if self.a & 0b10000000 == 0b10000000 {
-            self.p |= Status::from_bits(0b10000000).unwrap();
+            self.p.set_negative(true);
         }  
     }
 
     fn set_ldx_flags(&mut self) {
         if self.x == 0 {
-            self.p |= Status::from_bits(0b00000010).unwrap();
+            self.p.set_zero(true);
         }
 
         if self.x & 0b10000000 == 0b10000000 {
-            self.p |= Status::from_bits(0b10000000).unwrap();
+            self.p.set_negative(true);
         } 
     }
 
     fn set_ldy_flags(&mut self) {
         if self.y == 0 {
-            self.p |= Status::from_bits(0b00000010).unwrap();
+            self.p.set_zero(true);
         }
 
         if self.y & 0b10000000 == 0b10000000 {
-            self.p |= Status::from_bits(0b10000000).unwrap();
+            self.p.set_negative(true);
         } 
     }
 
@@ -2124,25 +2192,25 @@ impl CPU {
         if overflow {
             println!("found carry");
             // carry flag set
-            self.p |= Status::from_bits(0b00000001).unwrap();
+            self.p.set_carry(true)
         }
 
         // on incorrect sign
         if (initial_value & 0b10000000) != (self.a & 0b10000000) {
             println!("found overflow");
             // overflow flag set
-            self.p |= Status::from_bits(0b01000000).unwrap();
+            self.p.set_overflow(true);
         }
 
         if self.a == 0 {
             // zero flag set
-            self.p |= Status::from_bits(0b00000010).unwrap();
+            self.p.set_zero(true);
         }
 
         // if A has negative bit on
         if (self.a & 0b10000000) == 0b1000000 {
             // negative flag set
-            self.p |= Status::from_bits(0b10000000).unwrap();
+            self.p.set_negative(true);
 
         }
     }
