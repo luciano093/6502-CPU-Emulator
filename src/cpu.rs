@@ -2131,6 +2131,57 @@ impl CPU {
                     self.p.set_interrupt(true);
                     cycles -= 1;
                 }
+                BRK => {
+                    // Discarded data
+                    cycles -= 1;
+
+                    memory[self.sp as usize] = (self.pc >> 8) as u8;
+                    self.sp -= 1;
+                    cycles -= 1;
+
+                    memory[self.sp as usize] = self.pc as u8;
+                    self.sp -= 1;
+                    cycles -= 1;
+
+                    memory[self.sp as usize] = self.p.bits();
+                    self.sp -= 1;
+                    cycles -= 1;
+
+                    let low_byte = memory[0xFFFE];
+                    cycles -= 1;
+
+                    let high_byte = memory[0xFFFF];
+                    cycles -= 1;
+
+                    self.pc = ((high_byte as u16) << 8) | low_byte as u16;
+
+                    self.p.set_break(true);
+                }
+                // todo: research nop behavior
+                NOP => {
+                    let _ = self.fetch_byte(&mut cycles, memory);
+                }
+                RTI => {
+                    // Discarded data
+                    cycles -= 1;
+
+                    // Discarded data
+                    cycles -= 1;
+
+                    self.sp += 1;
+                    self.p = memory[self.sp as usize].into();
+                    cycles -= 1;
+
+                    self.sp += 1;
+                    let low_byte = memory[self.sp as usize];
+                    cycles -= 1;
+
+                    self.sp += 1;
+                    let high_byte = memory[self.sp as usize];
+                    cycles -= 1;
+
+                    self.pc = ((high_byte as u16) << 8) | low_byte as u16;
+                }
                 _ => panic!("Tried to execute unknown instruction"),
             }
         }

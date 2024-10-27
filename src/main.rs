@@ -31,7 +31,7 @@ fn main() {
     mem[0xE012] = LDY_IM; // 6
     mem[0xE013] = 0x01; // 6
 
-    cpu.execute(69, &mut mem);
+    cpu.execute(68, &mut mem);
 
     println!("final A: {}/{:02x}/{:08b}", cpu.a, cpu.a, cpu.a);
     println!("final X: {}/{:02x}/{:08b}", cpu.x, cpu.x, cpu.x);

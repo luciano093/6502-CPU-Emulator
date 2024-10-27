@@ -253,3 +253,12 @@ pub const SED: Byte = 0xF8;
 
 // Set Interrupt Disable
 pub const SEI: Byte = 0x78;
+
+// Force Interrupt
+pub const BRK: Byte = 0x00;
+
+// No Operation
+pub const NOP: Byte = 0xEA;
+
+// Return from Interrupt
+pub const RTI: Byte = 0x40;
