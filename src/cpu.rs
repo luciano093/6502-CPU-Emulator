@@ -241,6 +241,10 @@ impl CPU {
             let instruction = self.fetch_byte(&mut cycles, memory);
 
             println!("instruction: {:02X}, cycles left: {}", instruction, cycles + 1);
+            println!("A: {:04X}", self.a);
+            println!("X: {:04X}", self.x);
+            println!("Y: {:04X}", self.y);
+            println!("flags: {:08b}", self.p.bits());
 
             match instruction {
                 LDA_IM => {
@@ -390,25 +394,17 @@ impl CPU {
                     self.a = self.x;
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }  
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);  
                 }
                 TYA => {
                     self.a = self.y;
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }  
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 TSX => {
                     self.x = self.sp;
@@ -453,13 +449,9 @@ impl CPU {
                     self.a = memory[self.sp as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }  
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);  
                 }
                 PLP => {
                     // Discarded OP CODE (due to cpu design) that will be used on next cycle
@@ -475,308 +467,212 @@ impl CPU {
                 AND_IM => {
                     self.a &= self.fetch_byte(&mut cycles, memory);
                 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }  
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);  
                 }
                 AND_ZP => {
                     let effectve_address = self.zero_page_addressing(&mut cycles, memory); 
                     self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 AND_ZPX => {
                     let effectve_address = self.zero_page_x_addressing(&mut cycles, memory); 
                     self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 AND_ABS => {
                     let effectve_address = self.absolute_addressing(&mut cycles, memory); 
                     self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 AND_ABSX => {
                     let effectve_address = self.absolute_x_addressing(&mut cycles, memory); 
                     self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 AND_ABSY => {
                     let effectve_address = self.absolute_y_addressing(&mut cycles, memory); 
                     self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 AND_INDX => {
                     let effectve_address = self.indirect_x_addressing(&mut cycles, memory); 
                     self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 AND_INDY => {
                     let effectve_address = self.indirect_y_addressing(&mut cycles, memory); 
                     self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 EOR_IM => {
                     self.a ^= self.fetch_byte(&mut cycles, memory);
                 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }  
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);  
                 }
                 EOR_ZP => {
                     let effectve_address = self.zero_page_addressing(&mut cycles, memory); 
                     self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 EOR_ZPX => {
                     let effectve_address = self.zero_page_x_addressing(&mut cycles, memory); 
                     self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 EOR_ABS => {
                     let effectve_address = self.absolute_addressing(&mut cycles, memory); 
                     self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 EOR_ABSX => {
                     let effectve_address = self.absolute_x_addressing(&mut cycles, memory); 
                     self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 EOR_ABSY => {
                     let effectve_address = self.absolute_y_addressing(&mut cycles, memory); 
                     self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 EOR_INDX => {
                     let effectve_address = self.indirect_x_addressing(&mut cycles, memory); 
                     self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 EOR_INDY => {
                     let effectve_address = self.indirect_y_addressing(&mut cycles, memory); 
                     self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 ORA_IM => {
                     self.a |= self.fetch_byte(&mut cycles, memory);
                 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }  
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);  
                 }
                 ORA_ZP => {
                     let effectve_address = self.zero_page_addressing(&mut cycles, memory); 
                     self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 ORA_ZPX => {
                     let effectve_address = self.zero_page_x_addressing(&mut cycles, memory); 
                     self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 ORA_ABS => {
                     let effectve_address = self.absolute_addressing(&mut cycles, memory); 
                     self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 ORA_ABSX => {
                     let effectve_address = self.absolute_x_addressing(&mut cycles, memory); 
                     self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 ORA_ABSY => {
                     let effectve_address = self.absolute_y_addressing(&mut cycles, memory); 
                     self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 ORA_INDX => {
                     let effectve_address = self.indirect_x_addressing(&mut cycles, memory); 
                     self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 ORA_INDY => {
                     let effectve_address = self.indirect_y_addressing(&mut cycles, memory); 
                     self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
             
-                    if self.a & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.a & 0b10000000 == 0b10000000);
                 }
                 BIT_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
@@ -1087,10 +983,8 @@ impl CPU {
                 CMP_IM => {
                     let byte = self.fetch_byte(&mut cycles, memory);
 
-                    if self.a >= byte {
-                        self.p.set_carry(true);
-                    }
-
+                    self.p.set_carry(self.a >= byte);
+                    
                     if self.a == byte {
                         self.p.set_zero(true);
                     }
@@ -1103,9 +997,7 @@ impl CPU {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.a >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.a >= byte);
 
                     if self.a == byte {
                         self.p.set_zero(true);
@@ -1119,9 +1011,7 @@ impl CPU {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.a >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.a >= byte);
 
                     if self.a == byte {
                         self.p.set_zero(true);
@@ -1135,9 +1025,7 @@ impl CPU {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.a >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.a >= byte);
 
                     if self.a == byte {
                         self.p.set_zero(true);
@@ -1151,9 +1039,7 @@ impl CPU {
                     let effective_address = self.absolute_x_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.a >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.a >= byte);
 
                     if self.a == byte {
                         self.p.set_zero(true);
@@ -1167,9 +1053,7 @@ impl CPU {
                     let effective_address = self.absolute_y_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.a >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.a >= byte);
 
                     if self.a == byte {
                         self.p.set_zero(true);
@@ -1183,9 +1067,7 @@ impl CPU {
                     let effective_address = self.indirect_x_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.a >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.a >= byte);
 
                     if self.a == byte {
                         self.p.set_zero(true);
@@ -1199,9 +1081,7 @@ impl CPU {
                     let effective_address = self.indirect_y_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.a >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.a >= byte);
 
                     if self.a == byte {
                         self.p.set_zero(true);
@@ -1214,11 +1094,12 @@ impl CPU {
                 CPX_IM => {
                     let byte = self.fetch_byte(&mut cycles, memory);
 
-                    if self.x >= byte {
-                        self.p.set_carry(true);
-                    }
+                    println!("byte: {:04X}", byte);
+
+                    self.p.set_carry(self.x >= byte);
 
                     if self.x == byte {
+                        println!("setting zero to true");
                         self.p.set_zero(true);
                     }
 
@@ -1230,9 +1111,7 @@ impl CPU {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.x >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.x >= byte);
 
                     if self.x == byte {
                         self.p.set_zero(true);
@@ -1246,9 +1125,7 @@ impl CPU {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.x >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.x >= byte);
 
                     if self.x == byte {
                         self.p.set_zero(true);
@@ -1261,9 +1138,7 @@ impl CPU {
                 CPY_IM => {
                     let byte = self.fetch_byte(&mut cycles, memory);
 
-                    if self.y >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.y >= byte);
 
                     if self.y == byte {
                         self.p.set_zero(true);
@@ -1277,9 +1152,7 @@ impl CPU {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.y >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.y >= byte);
 
                     if self.y == byte {
                         self.p.set_zero(true);
@@ -1293,9 +1166,7 @@ impl CPU {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
                     let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
-                    if self.y >= byte {
-                        self.p.set_carry(true);
-                    }
+                    self.p.set_carry(self.y >= byte);
 
                     if self.y == byte {
                         self.p.set_zero(true);
@@ -1406,13 +1277,8 @@ impl CPU {
                     self.x += 1;
                     cycles -= 1;
 
-                    if self.x == 0 {
-                        self.p.set_zero(true);
-                    }
-
-                    if (self.x & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_zero(self.x == 0);
+                    self.p.set_negative((self.x & 0b10000000) == 0b10000000);
                 }
                 INY => {
                     self.y += 1;
@@ -1556,9 +1422,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
 
                     if (self.a & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1580,9 +1444,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1604,9 +1466,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1628,9 +1488,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1657,9 +1515,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1676,9 +1532,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
 
                     if (self.a & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1700,9 +1554,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1724,9 +1576,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1748,9 +1598,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1777,9 +1625,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1797,9 +1643,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
 
                     if (self.a & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1822,9 +1666,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1847,9 +1689,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1872,9 +1712,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1902,9 +1740,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1926,9 +1762,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if self.a == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.a == 0);
 
                     if (self.a & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1955,9 +1789,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -1984,9 +1816,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -2013,9 +1843,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -2047,9 +1875,7 @@ impl CPU {
                         self.p.set_negative(false);
                     }
 
-                    if new_byte == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(new_byte == 0);
 
                     if (new_byte & 0b10000000) == 0b10000000 {
                         self.p.set_negative(true);
@@ -2102,15 +1928,181 @@ impl CPU {
                     self.pc = ((high_byte as u16) << 8) | low_byte as u16;
                     self.pc += 1;
                 }
+                BCC => {
+                    let offset = self.fetch_byte(&mut cycles, memory);
+                    cycles -= 1;
+
+                    if !self.p.carry_flag() {
+                        let new_location;
+
+                        if offset >= 128 {
+                            new_location = self.pc - (256u16.wrapping_sub(offset as u16)) as u16;
+                        } else {
+                            new_location = self.pc + offset as u16;
+                        }
+
+                        if self.pc & 0xFF00 != new_location & 0xFF00 {
+                            cycles -= 1;
+                            cycles -= 1;
+                        }
+
+                        self.pc = new_location;
+                    }
+                }
+                BCS => {
+                    let offset = self.fetch_byte(&mut cycles, memory);
+                    cycles -= 1;
+
+                    if self.p.carry_flag() {
+                        let new_location;
+
+                        if offset >= 128 {
+                            new_location = self.pc - (256u16.wrapping_sub(offset as u16)) as u16;
+                        } else {
+                            new_location = self.pc + offset as u16;
+                        }
+
+                        if self.pc & 0xFF00 != new_location & 0xFF00 {
+                            cycles -= 1;
+                            cycles -= 1;
+                        }
+
+                        self.pc = new_location;
+                    }
+                }
+                BEQ => {
+                    let offset = self.fetch_byte(&mut cycles, memory);
+                    cycles -= 1;
+
+                    if self.p.zero_flag() {
+                        let new_location;
+
+                        if offset >= 128 {
+                            new_location = self.pc - (256u16.wrapping_sub(offset as u16)) as u16;
+                        } else {
+                            new_location = self.pc + offset as u16;
+                        }
+
+                        if self.pc & 0xFF00 != new_location & 0xFF00 {
+                            cycles -= 1;
+                            cycles -= 1;
+                        }
+
+                        self.pc = new_location;
+                    }
+                }
+                BMI => {
+                    let offset = self.fetch_byte(&mut cycles, memory);
+                    cycles -= 1;
+
+                    if self.p.negative_flag() {
+                        let new_location;
+
+                        if offset >= 128 {
+                            new_location = self.pc - (256u16.wrapping_sub(offset as u16)) as u16;
+                        } else {
+                            new_location = self.pc + offset as u16;
+                        }
+
+                        if self.pc & 0xFF00 != new_location & 0xFF00 {
+                            cycles -= 1;
+                            cycles -= 1;
+                        }
+
+                        self.pc = new_location;
+                    }
+                }
+                BNE => {
+                    let offset = self.fetch_byte(&mut cycles, memory);
+                    cycles -= 1;
+
+                    if !self.p.zero_flag() {
+                        let new_location;
+
+                        if offset >= 128 {
+                            new_location = self.pc - (256u16.wrapping_sub(offset as u16)) as u16;
+                        } else {
+                            new_location = self.pc + offset as u16;
+                        }
+
+                        if self.pc & 0xFF00 != new_location & 0xFF00 {
+                            cycles -= 1;
+                            cycles -= 1;
+                        }
+
+                        self.pc = new_location;
+                    }
+                }
+                BPL => {
+                    let offset = self.fetch_byte(&mut cycles, memory);
+                    cycles -= 1;
+
+                    if !self.p.negative_flag() {
+                        let new_location;
+
+                        if offset >= 128 {
+                            new_location = self.pc - (256u16.wrapping_sub(offset as u16)) as u16;
+                        } else {
+                            new_location = self.pc + offset as u16;
+                        }
+
+                        if self.pc & 0xFF00 != new_location & 0xFF00 {
+                            cycles -= 1;
+                            cycles -= 1;
+                        }
+
+                        self.pc = new_location;
+                    }
+                }
+                BVC => {
+                    let offset = self.fetch_byte(&mut cycles, memory);
+                    cycles -= 1;
+
+                    if !self.p.overflow_flag() {
+                        let new_location;
+
+                        if offset >= 128 {
+                            new_location = self.pc - (256u16.wrapping_sub(offset as u16)) as u16;
+                        } else {
+                            new_location = self.pc + offset as u16;
+                        }
+
+                        if self.pc & 0xFF00 != new_location & 0xFF00 {
+                            cycles -= 1;
+                            cycles -= 1;
+                        }
+
+                        self.pc = new_location;
+                    }
+                }
+                BVS => {
+                    let offset = self.fetch_byte(&mut cycles, memory);
+                    cycles -= 1;
+
+                    if self.p.overflow_flag() {
+                        let new_location;
+
+                        if offset >= 128 {
+                            new_location = self.pc - (256u16.wrapping_sub(offset as u16)) as u16;
+                        } else {
+                            new_location = self.pc + offset as u16;
+                        }
+
+                        if self.pc & 0xFF00 != new_location & 0xFF00 {
+                            cycles -= 1;
+                            cycles -= 1;
+                        }
+
+                        self.pc = new_location;
+                    }
+                }
                 _ => panic!("Tried to execute unknown instruction"),
             }
         }
     }
 
     fn set_lda_flags(&mut self) {
-        if self.a == 0 {
-            self.p.set_zero(true);
-        }
+        self.p.set_zero(self.a == 0);
 
         if self.a & 0b10000000 == 0b10000000 {
             self.p.set_negative(true);
@@ -2118,9 +2110,7 @@ impl CPU {
     }
 
     fn set_ldx_flags(&mut self) {
-        if self.x == 0 {
-            self.p.set_zero(true);
-        }
+        self.p.set_zero(self.x == 0);
 
         if self.x & 0b10000000 == 0b10000000 {
             self.p.set_negative(true);
@@ -2128,9 +2118,7 @@ impl CPU {
     }
 
     fn set_ldy_flags(&mut self) {
-        if self.y == 0 {
-            self.p.set_zero(true);
-        }
+        self.p.set_zero(self.y == 0);
 
         if self.y & 0b10000000 == 0b10000000 {
             self.p.set_negative(true);
@@ -2151,10 +2139,7 @@ impl CPU {
             self.p.set_overflow(true);
         }
 
-        if self.a == 0 {
-            // zero flag set
-            self.p.set_zero(true);
-        }
+        self.p.set_zero(self.a == 0);
 
         // if A has negative bit on
         if (self.a & 0b10000000) == 0b1000000 {

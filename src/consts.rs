@@ -208,3 +208,27 @@ pub const JSR: Byte = 0x20;
 
 // Return from Subroutine
 pub const RTS: Byte = 0x60;
+
+// Branch if Carry Clear
+pub const BCC: Byte = 0x90;
+
+// Branch if Carry Set
+pub const BCS: Byte = 0xB0;
+
+// Branch if Equal
+pub const BEQ: Byte = 0xF0;
+
+// Branch if Minus
+pub const BMI: Byte = 0x30;
+
+// Branch if Not Equal
+pub const BNE: Byte = 0xD0;
+
+// Branch if Positive
+pub const BPL: Byte = 0x10;
+
+// Branch if Overflow Clear
+pub const BVC: Byte = 0x50;
+
+// Branch if Overflow Set
+pub const BVS: Byte = 0x70;
