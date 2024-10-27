@@ -10,7 +10,7 @@ bitflags! {
     pub struct Status: u8 {
         const C = 0b00000001; // Carry Flag
         const Z = 0b00000010; // Zero Flag
-        const I = 0b00000100; // Interruptor Disable Flag
+        const I = 0b00000100; // Interrupt Disable Flag
         const D = 0b00001000; // Decimal Mode Flag
         const B = 0b00010000; // Break Command Flag
         const V = 0b01000000; // Overflow Flag
@@ -44,11 +44,11 @@ impl Status {
         self.bits() & 0b00000010 == 0b00000010
     }
 
-    pub fn set_interruptor(&mut self, state: bool) {
+    pub fn set_interrupt(&mut self, state: bool) {
         self.set(0b00000100.into(), state);
     }
 
-    pub const fn interruptor_flag(&self) -> bool {
+    pub const fn interrupt_flag(&self) -> bool {
         self.bits() & 0b00000100 == 0b00000100
     }
 
@@ -1930,9 +1930,10 @@ impl CPU {
                 }
                 BCC => {
                     let offset = self.fetch_byte(&mut cycles, memory);
-                    cycles -= 1;
-
+                    
                     if !self.p.carry_flag() {
+                        cycles -= 1;
+
                         let new_location;
 
                         if offset >= 128 {
@@ -1951,9 +1952,10 @@ impl CPU {
                 }
                 BCS => {
                     let offset = self.fetch_byte(&mut cycles, memory);
-                    cycles -= 1;
 
                     if self.p.carry_flag() {
+                        cycles -= 1;
+
                         let new_location;
 
                         if offset >= 128 {
@@ -1972,9 +1974,10 @@ impl CPU {
                 }
                 BEQ => {
                     let offset = self.fetch_byte(&mut cycles, memory);
-                    cycles -= 1;
 
                     if self.p.zero_flag() {
+                        cycles -= 1;
+
                         let new_location;
 
                         if offset >= 128 {
@@ -1993,9 +1996,10 @@ impl CPU {
                 }
                 BMI => {
                     let offset = self.fetch_byte(&mut cycles, memory);
-                    cycles -= 1;
 
                     if self.p.negative_flag() {
+                        cycles -= 1;
+
                         let new_location;
 
                         if offset >= 128 {
@@ -2014,9 +2018,10 @@ impl CPU {
                 }
                 BNE => {
                     let offset = self.fetch_byte(&mut cycles, memory);
-                    cycles -= 1;
 
                     if !self.p.zero_flag() {
+                        cycles -= 1;
+
                         let new_location;
 
                         if offset >= 128 {
@@ -2035,9 +2040,10 @@ impl CPU {
                 }
                 BPL => {
                     let offset = self.fetch_byte(&mut cycles, memory);
-                    cycles -= 1;
-
+                    
                     if !self.p.negative_flag() {
+                        cycles -= 1;
+
                         let new_location;
 
                         if offset >= 128 {
@@ -2056,9 +2062,10 @@ impl CPU {
                 }
                 BVC => {
                     let offset = self.fetch_byte(&mut cycles, memory);
-                    cycles -= 1;
 
                     if !self.p.overflow_flag() {
+                        cycles -= 1;
+
                         let new_location;
 
                         if offset >= 128 {
@@ -2095,6 +2102,34 @@ impl CPU {
 
                         self.pc = new_location;
                     }
+                }
+                CLC => {
+                    self.p.set_carry(false);
+                    cycles -= 1;
+                }
+                CLD => {
+                    self.p.set_decimal(false);
+                    cycles -= 1;
+                }
+                CLI => {
+                    self.p.set_interrupt(false);
+                    cycles -= 1;
+                }
+                CLV => {
+                    self.p.set_overflow(false);
+                    cycles -= 1;
+                }
+                SEC => {
+                    self.p.set_carry(true);
+                    cycles -= 1;
+                }
+                SED => {
+                    self.p.set_decimal(true);
+                    cycles -= 1;
+                }
+                SEI => {
+                    self.p.set_interrupt(true);
+                    cycles -= 1;
                 }
                 _ => panic!("Tried to execute unknown instruction"),
             }

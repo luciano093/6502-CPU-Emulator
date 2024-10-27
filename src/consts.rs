@@ -232,3 +232,24 @@ pub const BVC: Byte = 0x50;
 
 // Branch if Overflow Set
 pub const BVS: Byte = 0x70;
+
+// Clear Carry Flag
+pub const CLC: Byte = 0x18;
+
+// Clear Decimal Mode
+pub const CLD: Byte = 0xD8;
+
+// Clear Interrupt Disable
+pub const CLI: Byte = 0x58;
+
+// Clear Overflow Flag
+pub const CLV: Byte = 0xB8;
+
+// Set Carry Flag
+pub const SEC: Byte = 0x38;
+
+// Set Decimal Flag
+pub const SED: Byte = 0xF8;
+
+// Set Interrupt Disable
+pub const SEI: Byte = 0x78;
