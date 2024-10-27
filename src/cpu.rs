@@ -2158,9 +2158,7 @@ impl CPU {
                     self.p.set_break(true);
                 }
                 // todo: research nop behavior
-                NOP => {
-                    let _ = self.fetch_byte(&mut cycles, memory);
-                }
+                NOP => (),
                 RTI => {
                     // Discarded data
                     cycles -= 1;
