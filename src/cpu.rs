@@ -245,48 +245,21 @@ impl CPU {
             match instruction {
                 LDA_IM => {
                     self.a = self.fetch_byte(&mut cycles, memory);
-
                     self.set_lda_flags();
                 }
-                LDA_ZP => {
-                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
+                lda_instruction @ (LDA_ZP | LDA_ZPX | LDA_ABS | LDA_ABSX | LDA_ABSY | LDA_INDX | LDA_INDY) => {
+                    let effective_address = match lda_instruction {
+                        LDA_ZP => self.zero_page_addressing(&mut cycles, memory) as usize,
+                        LDA_ZPX => self.zero_page_x_addressing(&mut cycles, memory) as usize,
+                        LDA_ABS => self.absolute_addressing(&mut cycles, memory) as usize,
+                        LDA_ABSX => self.absolute_x_addressing(&mut cycles, memory) as usize,
+                        LDA_ABSY => self.absolute_y_addressing(&mut cycles, memory) as usize,
+                        LDA_INDX => self.indirect_x_addressing(&mut cycles, memory) as usize,
+                        LDA_INDY => self.indirect_y_addressing(&mut cycles, memory) as usize,
+                        _ => panic!("Unexpected LDA instruction"),
+                    };
 
-                    self.set_lda_flags();
-                }
-                LDA_ZPX => {
-                    let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_lda_flags();
-                }
-                LDA_ABS => {
-                    let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_lda_flags();
-                }
-                LDA_ABSX => {
-                    let effective_address = self.absolute_x_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_lda_flags();
-                }
-                LDA_ABSY => {
-                    let effective_address = self.absolute_y_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_lda_flags();
-                }
-                LDA_INDX => {
-                    let effective_address = self.indirect_x_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_lda_flags();
-                }
-                LDA_INDY => {
-                    let effective_address = self.indirect_y_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address);
 
                     self.set_lda_flags();
                 }
@@ -295,27 +268,15 @@ impl CPU {
 
                     self.set_ldx_flags();
                 }
-                LDX_ZP => {
-                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    self.x = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_ldx_flags();
-                }
-                LDX_ZPY => {
-                    let effective_address = self.zero_page_y_addressing(&mut cycles, memory);
-                    self.x = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_ldx_flags();
-                }
-                LDX_ABS => {
-                    let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    self.x = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_ldx_flags();
-                }
-                LDX_ABSY => {
-                    let effective_address = self.absolute_y_addressing(&mut cycles, memory);
-                    self.x = self.read_memory(&mut cycles, memory, effective_address as usize);
+                LDX_ZP | LDX_ZPY | LDX_ABS | LDX_ABSY => {
+                    let effective_address = match instruction {
+                        LDX_ZP => self.zero_page_addressing(&mut cycles, memory) as usize,
+                        LDX_ZPY => self.zero_page_y_addressing(&mut cycles, memory) as usize,
+                        LDX_ABS => self.absolute_addressing(&mut cycles, memory) as usize,
+                        LDX_ABSY => self.absolute_y_addressing(&mut cycles, memory) as usize,
+                        _ => panic!("Unexpected LDX instruction"),
+                    };
+                    self.x = self.read_memory(&mut cycles, memory, effective_address);
 
                     self.set_ldx_flags();
                 }
@@ -324,27 +285,15 @@ impl CPU {
 
                     self.set_ldy_flags();
                 }
-                LDY_ZP => {
-                    let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    self.y = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_ldy_flags();
-                }
-                LDY_ZPX => {
-                    let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
-                    self.y = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_ldy_flags();
-                }
-                LDY_ABS => {
-                    let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    self.y = self.read_memory(&mut cycles, memory, effective_address as usize);
-
-                    self.set_ldy_flags();
-                }
-                LDY_ABSX => {
-                    let effective_address = self.absolute_x_addressing(&mut cycles, memory);
-                    self.y = self.read_memory(&mut cycles, memory, effective_address as usize);
+                LDY_ZP | LDY_ZPX | LDY_ABS | LDY_ABSX => {
+                    let effective_address = match instruction {
+                        LDY_ZP => self.zero_page_addressing(&mut cycles, memory) as usize,
+                        LDY_ZPX => self.zero_page_x_addressing(&mut cycles, memory) as usize,
+                        LDY_ABS => self.absolute_addressing(&mut cycles, memory) as usize,
+                        LDY_ABSX => self.absolute_x_addressing(&mut cycles, memory) as usize,
+                        _ => panic!("Unexpected LDY instruction"),
+                    };
+                    self.y = self.read_memory(&mut cycles, memory, effective_address);
 
                     self.set_ldy_flags();
                 }
