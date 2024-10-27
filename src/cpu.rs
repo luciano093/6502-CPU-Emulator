@@ -1,7 +1,6 @@
 use bitflags::bitflags;
 use crate::consts::LDA_INDY;
 use crate::{Byte, Word};
-use crate::memory::Memory;
 use crate::consts::*;
 
 bitflags! {
@@ -29,14 +28,14 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn reset(&mut self, memory: &Memory) {
+    pub fn reset(&mut self, memory: &[u8]) {
         self.pc = memory[0xFFFC] as u16 | ((memory[0xFFFD] as u16) << 8);
         self.sp = 0xFF; // goes between 0x0100 and 0x1FF in stack
     }
 
     /// takes 1 cycle
-    fn fetch_byte(&mut self, cycles: &mut u32, memory: &mut Memory) -> Byte {
-        let byte = memory[self.pc];
+    fn fetch_byte(&mut self, cycles: &mut u32, memory: &mut [u8]) -> Byte {
+        let byte = memory[self.pc as usize];
         self.pc += 1;
         *cycles -= 1;
         
@@ -44,12 +43,12 @@ impl CPU {
     }
 
     /// takes 2 cycles
-    fn fetch_word(&mut self, cycles: &mut u32, memory: &mut Memory) -> Word {
-        let low_byte = memory[self.pc];
+    fn fetch_word(&mut self, cycles: &mut u32, memory: &mut [u8]) -> Word {
+        let low_byte = memory[self.pc as usize];
         self.pc += 1;
         *cycles -= 1;
 
-        let high_byte = memory[self.pc];
+        let high_byte = memory[self.pc as usize];
         self.pc += 1;
         *cycles -= 1;
 
@@ -61,7 +60,7 @@ impl CPU {
 
     /// `effective_address` refers to the physical memory location\
     /// takes 1 cycle
-    fn read_memory(&mut self, cycles: &mut u32, memory: &mut Memory, effective_address: u16) -> Byte {
+    fn read_memory(&mut self, cycles: &mut u32, memory: &mut [u8], effective_address: usize) -> Byte {
         let byte= memory[effective_address];
         *cycles -= 1;
 
@@ -70,22 +69,22 @@ impl CPU {
 
     /// `effective_address` refers to the physical memory location\
     /// takes 2 cycles
-    fn read_word_memory(&mut self, cycles: &mut u32, memory: &mut Memory, effective_address: u16) -> Word {
-        let low_byte = self.read_memory(cycles, memory, effective_address as u16);
+    fn read_word_memory(&mut self, cycles: &mut u32, memory: &mut [u8], effective_address: usize) -> Word {
+        let low_byte = self.read_memory(cycles, memory, effective_address as usize);
 
         // todo: fix what happens if high byte is at effective address greater than allowed
-        let high_byte = self.read_memory(cycles, memory, effective_address as u16 + 1);
+        let high_byte = self.read_memory(cycles, memory, effective_address as usize + 1);
 
         (low_byte as u16) | ((high_byte as u16) << 8)
     }
 
     /// takes 1 cycle
-    fn zero_page_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+    fn zero_page_addressing(&mut self, cycles: &mut u32, memory: &mut [u8]) -> u8 {
         self.fetch_byte(cycles, memory)
     }
 
     /// takes 2 cycles
-    fn zero_page_x_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+    fn zero_page_x_addressing(&mut self, cycles: &mut u32, memory: &mut [u8]) -> u8 {
         let address= self.fetch_byte(cycles, memory);
         let effective_address = (self.x as u16 + address as u16) % 256; // % 256 wraps around so that the max is a byte
         *cycles -= 1;
@@ -94,7 +93,7 @@ impl CPU {
     }
 
     /// takes 2 cycles
-    fn zero_page_y_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u8 {
+    fn zero_page_y_addressing(&mut self, cycles: &mut u32, memory: &mut [u8]) -> u8 {
         let address= self.fetch_byte(cycles, memory);
         let effective_address = (self.y as u16 + address as u16) % 256; // % 256 wraps around so that the max is a byte
         *cycles -= 1;
@@ -103,12 +102,12 @@ impl CPU {
     }
 
     /// takes 2 cycles
-    fn absolute_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
+    fn absolute_addressing(&mut self, cycles: &mut u32, memory: &mut [u8]) -> u16 {
         self.fetch_word(cycles, memory)
     }
 
     /// takes 2-3 cycles depending on if page was crossed
-    fn absolute_x_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
+    fn absolute_x_addressing(&mut self, cycles: &mut u32, memory: &mut [u8]) -> u16 {
         let address = self.fetch_word(cycles, memory);
 
         let effective_address = self.x as u16 + address;
@@ -122,7 +121,7 @@ impl CPU {
     }
 
     /// takes 2-3 cycles depending on if page was crossed
-    fn absolute_y_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
+    fn absolute_y_addressing(&mut self, cycles: &mut u32, memory: &mut [u8]) -> u16 {
         let address = self.fetch_word(cycles, memory);
 
         let effective_address = self.y as u16 + address;
@@ -136,29 +135,29 @@ impl CPU {
     }
 
     /// takes 4 cycles
-    fn indirect_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
+    fn indirect_addressing(&mut self, cycles: &mut u32, memory: &mut [u8]) -> u16 {
         let effective_address = self.fetch_word(cycles, memory);
 
-        let effective_address= self.read_word_memory(cycles, memory, effective_address);
+        let effective_address= self.read_word_memory(cycles, memory, effective_address as usize);
 
         effective_address
     }
 
     /// takes 4 cycles
-    fn indirect_x_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
+    fn indirect_x_addressing(&mut self, cycles: &mut u32, memory: &mut [u8]) -> u16 {
         let address = self.fetch_byte(cycles, memory);
 
         let effective_address = address.wrapping_add(self.x);
         *cycles -= 1;
 
-        self.read_word_memory(cycles, memory, effective_address as u16)
+        self.read_word_memory(cycles, memory, effective_address as usize)
     }
 
     /// takes 3-4 cycles depending on if page was crossed
-    fn indirect_y_addressing(&mut self, cycles: &mut u32, memory: &mut Memory) -> u16 {
+    fn indirect_y_addressing(&mut self, cycles: &mut u32, memory: &mut [u8]) -> u16 {
         let effective_address = self.fetch_byte(cycles, memory);
 
-        let address = self.read_word_memory(cycles, memory, effective_address as u16);
+        let address = self.read_word_memory(cycles, memory, effective_address as usize);
         let effective_address = address + self.y as u16;
         
         // crosses a page
@@ -169,7 +168,7 @@ impl CPU {
         effective_address
     }
 
-    pub fn execute(&mut self, mut cycles: u32, memory: &mut Memory) {
+    pub fn execute(&mut self, mut cycles: u32, memory: &mut [u8]) {
         while cycles > 0 {
             let instruction = self.fetch_byte(&mut cycles, memory);
 
@@ -183,43 +182,43 @@ impl CPU {
                 }
                 LDA_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_lda_flags();
                 }
                 LDA_ZPX => {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_lda_flags();
                 }
                 LDA_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_lda_flags();
                 }
                 LDA_ABSX => {
                     let effective_address = self.absolute_x_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_lda_flags();
                 }
                 LDA_ABSY => {
                     let effective_address = self.absolute_y_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_lda_flags();
                 }
                 LDA_INDX => {
                     let effective_address = self.indirect_x_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_lda_flags();
                 }
                 LDA_INDY => {
                     let effective_address = self.indirect_y_addressing(&mut cycles, memory);
-                    self.a = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.a = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_lda_flags();
                 }
@@ -230,25 +229,25 @@ impl CPU {
                 }
                 LDX_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    self.x = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.x = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_ldx_flags();
                 }
                 LDX_ZPY => {
                     let effective_address = self.zero_page_y_addressing(&mut cycles, memory);
-                    self.x = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.x = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_ldx_flags();
                 }
                 LDX_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    self.x = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.x = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_ldx_flags();
                 }
                 LDX_ABSY => {
                     let effective_address = self.absolute_y_addressing(&mut cycles, memory);
-                    self.x = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.x = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_ldx_flags();
                 }
@@ -259,92 +258,92 @@ impl CPU {
                 }
                 LDY_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    self.y = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.y = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_ldy_flags();
                 }
                 LDY_ZPX => {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
-                    self.y = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.y = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_ldy_flags();
                 }
                 LDY_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    self.y = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.y = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_ldy_flags();
                 }
                 LDY_ABSX => {
                     let effective_address = self.absolute_x_addressing(&mut cycles, memory);
-                    self.y = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    self.y = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     self.set_ldy_flags();
                 }
                 STA_ZP => {
                     let effective_address= self.zero_page_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.a;
+                    memory[effective_address as usize] = self.a;
                 }
                 STA_ZPX => {
                     let effective_address= self.zero_page_x_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.a;
+                    memory[effective_address as usize] = self.a;
                 }
                 STA_ABS => {
                     let effective_address= self.absolute_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.a;
+                    memory[effective_address as usize] = self.a;
                 }
                 STA_ABSX => {
                     let effective_address= self.absolute_x_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.a;
+                    memory[effective_address as usize] = self.a;
                 }
                 STA_ABSY => {
                     let effective_address= self.absolute_y_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.a;
+                    memory[effective_address as usize] = self.a;
                 }
                 STA_INDX => {
                     let effective_address= self.indirect_x_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.a;
+                    memory[effective_address as usize] = self.a;
                 }
                 STA_INDY => {
                     let effective_address= self.indirect_y_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.a;
+                    memory[effective_address as usize] = self.a;
                 }
                 STX_ZP => {
                     let effective_address= self.zero_page_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.x;
+                    memory[effective_address as usize] = self.x;
                 }
                 STX_ZPY => {
                     let effective_address= self.zero_page_y_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.x;
+                    memory[effective_address as usize] = self.x;
                 }
                 STX_ABS => {
                     let effective_address= self.absolute_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.x;
+                    memory[effective_address as usize] = self.x;
                 }
                 STY_ZP => {
                     let effective_address= self.zero_page_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.y;
+                    memory[effective_address as usize] = self.y;
                 }
                 STY_ZPX => {
                     let effective_address= self.zero_page_y_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.y;
+                    memory[effective_address as usize] = self.y;
                 }
                 STY_ABS => {
                     let effective_address= self.absolute_addressing(&mut cycles, memory);
 
-                    memory[effective_address as u16] = self.y;
+                    memory[effective_address as usize] = self.y;
                 }
                 TAX => {
                     self.x = self.a;
@@ -414,7 +413,7 @@ impl CPU {
                     // Discarded OP CODE (due to cpu design) that will be used on next cycle
                     cycles -= 1;
 
-                    memory[self.sp as u16] = self.a;
+                    memory[self.sp as usize] = self.a;
                     self.sp -= 1;
                     cycles -= 1;
                 }
@@ -422,7 +421,7 @@ impl CPU {
                     // Discarded OP CODE (due to cpu design) that will be used on next cycle
                     cycles -= 1;
 
-                    memory[self.sp as u16] = self.p.bits();
+                    memory[self.sp as usize] = self.p.bits();
                     self.sp -= 1;
                     cycles -= 1;
                 }
@@ -434,7 +433,7 @@ impl CPU {
                     cycles -= 1;
 
                     self.sp += 1;
-                    self.a = memory[self.sp as u16];
+                    self.a = memory[self.sp as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -453,7 +452,7 @@ impl CPU {
                     cycles -= 1;
 
                     self.sp += 1;
-                    self.p = Status::from_bits(memory[self.sp as u16]).unwrap();
+                    self.p = Status::from_bits(memory[self.sp as usize]).unwrap();
                     cycles -= 1;
                 }
                 AND_IM => {
@@ -469,7 +468,7 @@ impl CPU {
                 }
                 AND_ZP => {
                     let effectve_address = self.zero_page_addressing(&mut cycles, memory); 
-                    self.a &= memory[effectve_address as u16];
+                    self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -482,7 +481,7 @@ impl CPU {
                 }
                 AND_ZPX => {
                     let effectve_address = self.zero_page_x_addressing(&mut cycles, memory); 
-                    self.a &= memory[effectve_address as u16];
+                    self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -495,7 +494,7 @@ impl CPU {
                 }
                 AND_ABS => {
                     let effectve_address = self.absolute_addressing(&mut cycles, memory); 
-                    self.a &= memory[effectve_address as u16];
+                    self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -508,7 +507,7 @@ impl CPU {
                 }
                 AND_ABSX => {
                     let effectve_address = self.absolute_x_addressing(&mut cycles, memory); 
-                    self.a &= memory[effectve_address as u16];
+                    self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -521,7 +520,7 @@ impl CPU {
                 }
                 AND_ABSY => {
                     let effectve_address = self.absolute_y_addressing(&mut cycles, memory); 
-                    self.a &= memory[effectve_address as u16];
+                    self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -534,7 +533,7 @@ impl CPU {
                 }
                 AND_INDX => {
                     let effectve_address = self.indirect_x_addressing(&mut cycles, memory); 
-                    self.a &= memory[effectve_address as u16];
+                    self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -547,7 +546,7 @@ impl CPU {
                 }
                 AND_INDY => {
                     let effectve_address = self.indirect_y_addressing(&mut cycles, memory); 
-                    self.a &= memory[effectve_address as u16];
+                    self.a &= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -571,7 +570,7 @@ impl CPU {
                 }
                 EOR_ZP => {
                     let effectve_address = self.zero_page_addressing(&mut cycles, memory); 
-                    self.a ^= memory[effectve_address as u16];
+                    self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -584,7 +583,7 @@ impl CPU {
                 }
                 EOR_ZPX => {
                     let effectve_address = self.zero_page_x_addressing(&mut cycles, memory); 
-                    self.a ^= memory[effectve_address as u16];
+                    self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -597,7 +596,7 @@ impl CPU {
                 }
                 EOR_ABS => {
                     let effectve_address = self.absolute_addressing(&mut cycles, memory); 
-                    self.a ^= memory[effectve_address as u16];
+                    self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -610,7 +609,7 @@ impl CPU {
                 }
                 EOR_ABSX => {
                     let effectve_address = self.absolute_x_addressing(&mut cycles, memory); 
-                    self.a ^= memory[effectve_address as u16];
+                    self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -623,7 +622,7 @@ impl CPU {
                 }
                 EOR_ABSY => {
                     let effectve_address = self.absolute_y_addressing(&mut cycles, memory); 
-                    self.a ^= memory[effectve_address as u16];
+                    self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -636,7 +635,7 @@ impl CPU {
                 }
                 EOR_INDX => {
                     let effectve_address = self.indirect_x_addressing(&mut cycles, memory); 
-                    self.a ^= memory[effectve_address as u16];
+                    self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -649,7 +648,7 @@ impl CPU {
                 }
                 EOR_INDY => {
                     let effectve_address = self.indirect_y_addressing(&mut cycles, memory); 
-                    self.a ^= memory[effectve_address as u16];
+                    self.a ^= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -673,7 +672,7 @@ impl CPU {
                 }
                 ORA_ZP => {
                     let effectve_address = self.zero_page_addressing(&mut cycles, memory); 
-                    self.a |= memory[effectve_address as u16];
+                    self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -686,7 +685,7 @@ impl CPU {
                 }
                 ORA_ZPX => {
                     let effectve_address = self.zero_page_x_addressing(&mut cycles, memory); 
-                    self.a |= memory[effectve_address as u16];
+                    self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -699,7 +698,7 @@ impl CPU {
                 }
                 ORA_ABS => {
                     let effectve_address = self.absolute_addressing(&mut cycles, memory); 
-                    self.a |= memory[effectve_address as u16];
+                    self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -712,7 +711,7 @@ impl CPU {
                 }
                 ORA_ABSX => {
                     let effectve_address = self.absolute_x_addressing(&mut cycles, memory); 
-                    self.a |= memory[effectve_address as u16];
+                    self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -725,7 +724,7 @@ impl CPU {
                 }
                 ORA_ABSY => {
                     let effectve_address = self.absolute_y_addressing(&mut cycles, memory); 
-                    self.a |= memory[effectve_address as u16];
+                    self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -738,7 +737,7 @@ impl CPU {
                 }
                 ORA_INDX => {
                     let effectve_address = self.indirect_x_addressing(&mut cycles, memory); 
-                    self.a |= memory[effectve_address as u16];
+                    self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -751,7 +750,7 @@ impl CPU {
                 }
                 ORA_INDY => {
                     let effectve_address = self.indirect_y_addressing(&mut cycles, memory); 
-                    self.a |= memory[effectve_address as u16];
+                    self.a |= memory[effectve_address as usize];
                     cycles -= 1;
 
                     if self.a == 0 {
@@ -764,7 +763,7 @@ impl CPU {
                 }
                 BIT_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let bit_test = self.a & memory[effective_address as u16];
+                    let bit_test = self.a & memory[effective_address as usize];
                     cycles -= 1;
                     
                     if bit_test == 0 {
@@ -775,7 +774,7 @@ impl CPU {
                 }
                 BIT_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    let bit_test = self.a & memory[effective_address];
+                    let bit_test = self.a & memory[effective_address as usize];
                     
                     if bit_test == 0 {
                         self.p |= Status::from_bits(0b00000010).unwrap();
@@ -801,7 +800,7 @@ impl CPU {
                 }
                 ADC_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let byte = memory[effective_address as u16];
+                    let byte = memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -819,7 +818,7 @@ impl CPU {
                 }
                 ADC_ZPX => {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
-                    let byte = memory[effective_address as u16];
+                    let byte = memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -837,7 +836,7 @@ impl CPU {
                 }
                 ADC_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    let byte = memory[effective_address as u16];
+                    let byte = memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -855,7 +854,7 @@ impl CPU {
                 }
                 ADC_ABSX => {
                     let effective_address = self.absolute_x_addressing(&mut cycles, memory);
-                    let byte = memory[effective_address as u16];
+                    let byte = memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -873,7 +872,7 @@ impl CPU {
                 }
                 ADC_ABSY => {
                     let effective_address = self.absolute_y_addressing(&mut cycles, memory);
-                    let byte = memory[effective_address as u16];
+                    let byte = memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -891,7 +890,7 @@ impl CPU {
                 }
                 ADC_INDX => {
                     let effective_address = self.indirect_x_addressing(&mut cycles, memory);
-                    let byte = memory[effective_address as u16];
+                    let byte = memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -909,7 +908,7 @@ impl CPU {
                 }
                 ADC_INDY => {
                     let effective_address = self.indirect_y_addressing(&mut cycles, memory);
-                    let byte = memory[effective_address as u16];
+                    let byte = memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -944,7 +943,7 @@ impl CPU {
                 }
                 SBC_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let byte = !memory[effective_address as u16];
+                    let byte = !memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -962,7 +961,7 @@ impl CPU {
                 }
                 SBC_ZPX => {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
-                    let byte = !memory[effective_address as u16];
+                    let byte = !memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -980,7 +979,7 @@ impl CPU {
                 }
                 SBC_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    let byte = !memory[effective_address as u16];
+                    let byte = !memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -998,7 +997,7 @@ impl CPU {
                 }
                 SBC_ABSX => {
                     let effective_address = self.absolute_x_addressing(&mut cycles, memory);
-                    let byte = !memory[effective_address as u16];
+                    let byte = !memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -1016,7 +1015,7 @@ impl CPU {
                 }
                 SBC_ABSY => {
                     let effective_address = self.absolute_y_addressing(&mut cycles, memory);
-                    let byte = !memory[effective_address as u16];
+                    let byte = !memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -1034,7 +1033,7 @@ impl CPU {
                 }
                 SBC_INDX => {
                     let effective_address = self.indirect_x_addressing(&mut cycles, memory);
-                    let byte = !memory[effective_address as u16];
+                    let byte = !memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -1052,7 +1051,7 @@ impl CPU {
                 }
                 SBC_INDY => {
                     let effective_address = self.indirect_y_addressing(&mut cycles, memory);
-                    let byte = !memory[effective_address as u16];
+                    let byte = !memory[effective_address as usize];
                     cycles -= 1;
 
                     let (mut a, mut a_overflow) = self.a.overflowing_add(byte);
@@ -1085,7 +1084,7 @@ impl CPU {
                 }
                 CMP_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1101,7 +1100,7 @@ impl CPU {
                 }
                 CMP_ZPX => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1117,7 +1116,7 @@ impl CPU {
                 }
                 CMP_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1133,7 +1132,7 @@ impl CPU {
                 }
                 CMP_ABSX => {
                     let effective_address = self.absolute_x_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1149,7 +1148,7 @@ impl CPU {
                 }
                 CMP_ABSY => {
                     let effective_address = self.absolute_y_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1165,7 +1164,7 @@ impl CPU {
                 }
                 CMP_INDX => {
                     let effective_address = self.indirect_x_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1181,7 +1180,7 @@ impl CPU {
                 }
                 CMP_INDY => {
                     let effective_address = self.indirect_y_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.a >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1212,7 +1211,7 @@ impl CPU {
                 }
                 CPX_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.x >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1228,7 +1227,7 @@ impl CPU {
                 }
                 CPX_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.x >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1259,7 +1258,7 @@ impl CPU {
                 }
                 CPY_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.y >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1275,7 +1274,7 @@ impl CPU {
                 }
                 CPY_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    let byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     if self.y >= byte {
                         self.p |= Status::from_bits(0b00000001).unwrap();
@@ -1293,7 +1292,7 @@ impl CPU {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
 
                     // Fetch data
-                    let mut data = memory[effective_address as u16];
+                    let mut data = memory[effective_address as usize];
                     cycles -= 1;
 
                     // Add
@@ -1301,7 +1300,7 @@ impl CPU {
                     cycles -= 1;
 
                     // Write modified data back to memory cycle
-                    memory[effective_address as u16] = data;
+                    memory[effective_address as usize] = data;
                     cycles -= 1;
 
                     if data == 0 {
@@ -1316,7 +1315,7 @@ impl CPU {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
 
                     // Fetch data
-                    let mut data = memory[effective_address as u16];
+                    let mut data = memory[effective_address as usize];
                     cycles -= 1;
 
                     // Add
@@ -1324,7 +1323,7 @@ impl CPU {
                     cycles -= 1;
 
                     // Write modified data back to memory cycle
-                    memory[effective_address as u16] = data;
+                    memory[effective_address as usize] = data;
                     cycles -= 1;
 
                     if data == 0 {
@@ -1339,7 +1338,7 @@ impl CPU {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
 
                     // Fetch data
-                    let mut data = memory[effective_address as u16];
+                    let mut data = memory[effective_address as usize];
                     cycles -= 1;
 
                     // Add
@@ -1347,7 +1346,7 @@ impl CPU {
                     cycles -= 1;
 
                     // Write modified data back to memory cycle
-                    memory[effective_address as u16] = data;
+                    memory[effective_address as usize] = data;
                     cycles -= 1;
 
                     if data == 0 {
@@ -1367,7 +1366,7 @@ impl CPU {
                     cycles -= 1;
 
                     // Fetch data
-                    let mut data = memory[effective_address as u16];
+                    let mut data = memory[effective_address as usize];
                     cycles -= 1;
 
                     // Add
@@ -1375,7 +1374,7 @@ impl CPU {
                     cycles -= 1;
 
                     // Write modified data back to memory cycle
-                    memory[effective_address as u16] = data;
+                    memory[effective_address as usize] = data;
                     cycles -= 1;
 
                     if data == 0 {
@@ -1414,7 +1413,7 @@ impl CPU {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
 
                     // Fetch data
-                    let mut data = memory[effective_address as u16];
+                    let mut data = memory[effective_address as usize];
                     cycles -= 1;
 
                     // Subtract
@@ -1422,7 +1421,7 @@ impl CPU {
                     cycles -= 1;
 
                     // Write modified data back to memory cycle
-                    memory[effective_address as u16] = data;
+                    memory[effective_address as usize] = data;
                     cycles -= 1;
 
                     if data == 0 {
@@ -1437,7 +1436,7 @@ impl CPU {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
 
                     // Fetch data
-                    let mut data = memory[effective_address as u16];
+                    let mut data = memory[effective_address as usize];
                     cycles -= 1;
 
                     // Subtract
@@ -1445,7 +1444,7 @@ impl CPU {
                     cycles -= 1;
 
                     // Write modified data back to memory cycle
-                    memory[effective_address as u16] = data;
+                    memory[effective_address as usize] = data;
                     cycles -= 1;
 
                     if data == 0 {
@@ -1460,7 +1459,7 @@ impl CPU {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
 
                     // Fetch data
-                    let mut data = memory[effective_address as u16];
+                    let mut data = memory[effective_address as usize];
                     cycles -= 1;
 
                     // Subtract
@@ -1468,7 +1467,7 @@ impl CPU {
                     cycles -= 1;
 
                     // Write modified data back to memory cycle
-                    memory[effective_address as u16] = data;
+                    memory[effective_address as usize] = data;
                     cycles -= 1;
 
                     if data == 0 {
@@ -1488,7 +1487,7 @@ impl CPU {
                     cycles -= 1;
 
                     // Fetch data
-                    let mut data = memory[effective_address as u16];
+                    let mut data = memory[effective_address as usize];
                     cycles -= 1;
 
                     // Subtract
@@ -1496,7 +1495,7 @@ impl CPU {
                     cycles -= 1;
 
                     // Write modified data back to memory cycle
-                    memory[effective_address as u16] = data;
+                    memory[effective_address as usize] = data;
                     cycles -= 1;
 
                     if data == 0 {
@@ -1550,12 +1549,12 @@ impl CPU {
                 }
                 ASL_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let new_byte = old_byte << 1;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1574,12 +1573,12 @@ impl CPU {
                 }
                 ASL_ZPX => {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let new_byte = old_byte << 1;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1598,12 +1597,12 @@ impl CPU {
                 }
                 ASL_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let new_byte = old_byte << 1;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1624,7 +1623,7 @@ impl CPU {
                     let address = self.fetch_word(&mut cycles, memory);
 
                     let effective_address = self.x as u16 + address;
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     // Discarded Data
                     cycles -= 1;
@@ -1632,7 +1631,7 @@ impl CPU {
                     let new_byte = old_byte << 1;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1670,12 +1669,12 @@ impl CPU {
                 }
                 LSR_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let new_byte = old_byte >> 1;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1694,12 +1693,12 @@ impl CPU {
                 }
                 LSR_ZPX => {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let new_byte = old_byte >> 1;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1718,12 +1717,12 @@ impl CPU {
                 }
                 LSR_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let new_byte = old_byte >> 1;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1744,7 +1743,7 @@ impl CPU {
                     let address = self.fetch_word(&mut cycles, memory);
 
                     let effective_address = self.x as u16 + address;
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     // Discarded Data
                     cycles -= 1;
@@ -1752,7 +1751,7 @@ impl CPU {
                     let new_byte = old_byte >> 1;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1791,13 +1790,13 @@ impl CPU {
                 }
                 ROL_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let mut new_byte = old_byte << 1;
                     new_byte |= self.p.bits() & 0b00000001;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1816,13 +1815,13 @@ impl CPU {
                 }
                 ROL_ZPX => {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let mut new_byte = old_byte << 1;
                     new_byte |= self.p.bits() & 0b00000001;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1841,13 +1840,13 @@ impl CPU {
                 }
                 ROL_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let mut new_byte = old_byte << 1;
                     new_byte |= self.p.bits() & 0b00000001;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1868,7 +1867,7 @@ impl CPU {
                     let address = self.fetch_word(&mut cycles, memory);
 
                     let effective_address = self.x as u16 + address;
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     // Discarded Data
                     cycles -= 1;
@@ -1877,7 +1876,7 @@ impl CPU {
                     new_byte |= self.p.bits() & 0b00000001;
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1920,7 +1919,7 @@ impl CPU {
                 }
                 ROR_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let mut new_byte = old_byte >> 1;
                     if (self.p.bits() & 0b00000001) == 0b00000001 {
@@ -1930,7 +1929,7 @@ impl CPU {
                     }
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1949,7 +1948,7 @@ impl CPU {
                 }
                 ROR_ZPX => {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let mut new_byte = old_byte >> 1;
                     if (self.p.bits() & 0b00000001) == 0b00000001 {
@@ -1959,7 +1958,7 @@ impl CPU {
                     }
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -1978,7 +1977,7 @@ impl CPU {
                 }
                 ROR_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     let mut new_byte = old_byte >> 1;
                     if (self.p.bits() & 0b00000001) == 0b00000001 {
@@ -1988,7 +1987,7 @@ impl CPU {
                     }
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -2009,7 +2008,7 @@ impl CPU {
                     let address = self.fetch_word(&mut cycles, memory);
 
                     let effective_address = self.x as u16 + address;
-                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as u16);
+                    let old_byte = self.read_memory(&mut cycles, memory, effective_address as usize);
 
                     // Discarded Data
                     cycles -= 1;
@@ -2022,7 +2021,7 @@ impl CPU {
                     }
                     cycles -= 1;
 
-                    memory[effective_address as u16] = new_byte;
+                    memory[effective_address as usize] = new_byte;
                     cycles -= 1;
 
                     if (old_byte & 0b10000000) == 0b10000000 {
@@ -2053,11 +2052,11 @@ impl CPU {
                     // Discarded data
                     cycles -= 1;
 
-                    memory[self.sp as u16] = (self.pc >> 8) as u8;
+                    memory[self.sp as usize] = (self.pc >> 8) as u8;
                     self.sp -= 1;
                     cycles -= 1;
 
-                    memory[self.sp as u16] = self.pc as u8;
+                    memory[self.sp as usize] = self.pc as u8;
                     self.sp -= 1;
                     cycles -= 1;
 
@@ -2073,11 +2072,11 @@ impl CPU {
                     cycles -= 1;
 
                     self.sp += 1;
-                    let low_byte = memory[self.sp as u16];
+                    let low_byte = memory[self.sp as usize];
                     cycles -= 1;
 
                     self.sp += 1;
-                    let high_byte = memory[self.sp as u16];
+                    let high_byte = memory[self.sp as usize];
                     cycles -= 1;
 
                     // Discarded data

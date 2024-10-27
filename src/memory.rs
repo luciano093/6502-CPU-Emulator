@@ -1,4 +1,4 @@
-use std::ops;
+use std::ops::{self, Deref, DerefMut};
 
 use crate::{Byte, Word};
 
@@ -11,6 +11,22 @@ impl Memory {
         Memory { bytes: [0; 65536] }
     }
 }
+
+impl Deref for Memory {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.bytes
+    }
+}
+
+impl DerefMut for Memory {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.bytes
+    }
+
+}
+
 
 impl ops::Index<Word> for Memory {
     type Output = Byte;
