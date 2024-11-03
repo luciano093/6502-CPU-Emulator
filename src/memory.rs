@@ -3,7 +3,7 @@ use std::ops::{self, Deref, DerefMut};
 use crate::{Byte, Word};
 
 pub struct Memory {
-    bytes: [Byte; 65536], // 64kb
+    pub bytes: [Byte; 65536], // 64kb
 }
 
 impl Memory {

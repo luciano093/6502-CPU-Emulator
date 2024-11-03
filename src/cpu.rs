@@ -251,8 +251,8 @@ impl CPU {
                     self.a = self.fetch_byte(&mut cycles, memory);
                     self.set_lda_flags();
                 }
-                lda_instruction @ (LDA_ZP | LDA_ZPX | LDA_ABS | LDA_ABSX | LDA_ABSY | LDA_INDX | LDA_INDY) => {
-                    let effective_address = match lda_instruction {
+                LDA_ZP | LDA_ZPX | LDA_ABS | LDA_ABSX | LDA_ABSY | LDA_INDX | LDA_INDY => {
+                    let effective_address = match instruction {
                         LDA_ZP => self.zero_page_addressing(&mut cycles, memory) as usize,
                         LDA_ZPX => self.zero_page_x_addressing(&mut cycles, memory) as usize,
                         LDA_ABS => self.absolute_addressing(&mut cycles, memory) as usize,
@@ -301,94 +301,55 @@ impl CPU {
 
                     self.set_ldy_flags();
                 }
-                STA_ZP => {
-                    let effective_address= self.zero_page_addressing(&mut cycles, memory);
+                STA_ZP | STA_ZPX | STA_ABS | STA_ABSX | STA_ABSY | STA_INDX | STA_INDY => {
+                    let effective_address= match instruction {
+                        STA_ZP => self.zero_page_addressing(&mut cycles, memory) as usize,
+                        STA_ZPX => self.zero_page_x_addressing(&mut cycles, memory) as usize,
+                        STA_ABS => self.absolute_addressing(&mut cycles, memory) as usize,
+                        STA_ABSX => self.absolute_x_addressing(&mut cycles, memory) as usize,
+                        STA_ABSY => self.absolute_y_addressing(&mut cycles, memory) as usize,
+                        STA_INDX => self.indirect_x_addressing(&mut cycles, memory) as usize,
+                        STA_INDY => self.indirect_y_addressing(&mut cycles, memory) as usize,
+                        _ => panic!("Unexpected STA instruction"),
+                    };
 
                     memory[effective_address as usize] = self.a;
                 }
-                STA_ZPX => {
-                    let effective_address= self.zero_page_x_addressing(&mut cycles, memory);
+                STX_ZP | STX_ZPY | STX_ABS => {
+                    let effective_address= match instruction {
+                        STX_ZP => self.zero_page_addressing(&mut cycles, memory) as usize,
+                        STX_ZPY => self.zero_page_y_addressing(&mut cycles, memory) as usize,
+                        STX_ABS => self.absolute_addressing(&mut cycles, memory) as usize,
+                        _ => panic!("Unexpected STX instruction"),
+                    };
 
-                    memory[effective_address as usize] = self.a;
+                    memory[effective_address] = self.x;
                 }
-                STA_ABS => {
-                    let effective_address= self.absolute_addressing(&mut cycles, memory);
+                STY_ZP | STY_ZPX | STY_ABS => {
+                    let effective_address= match instruction {
+                        STY_ZP => self.zero_page_addressing(&mut cycles, memory) as usize,
+                        STY_ZPX => self.zero_page_x_addressing(&mut cycles, memory) as usize,
+                        STY_ABS => self.absolute_addressing(&mut cycles, memory) as usize,
+                        _ => panic!("Unexpected STY instruction"),
+                    };
 
-                    memory[effective_address as usize] = self.a;
-                }
-                STA_ABSX => {
-                    let effective_address= self.absolute_x_addressing(&mut cycles, memory);
-
-                    memory[effective_address as usize] = self.a;
-                }
-                STA_ABSY => {
-                    let effective_address= self.absolute_y_addressing(&mut cycles, memory);
-
-                    memory[effective_address as usize] = self.a;
-                }
-                STA_INDX => {
-                    let effective_address= self.indirect_x_addressing(&mut cycles, memory);
-
-                    memory[effective_address as usize] = self.a;
-                }
-                STA_INDY => {
-                    let effective_address= self.indirect_y_addressing(&mut cycles, memory);
-
-                    memory[effective_address as usize] = self.a;
-                }
-                STX_ZP => {
-                    let effective_address= self.zero_page_addressing(&mut cycles, memory);
-
-                    memory[effective_address as usize] = self.x;
-                }
-                STX_ZPY => {
-                    let effective_address= self.zero_page_y_addressing(&mut cycles, memory);
-
-                    memory[effective_address as usize] = self.x;
-                }
-                STX_ABS => {
-                    let effective_address= self.absolute_addressing(&mut cycles, memory);
-
-                    memory[effective_address as usize] = self.x;
-                }
-                STY_ZP => {
-                    let effective_address= self.zero_page_addressing(&mut cycles, memory);
-
-                    memory[effective_address as usize] = self.y;
-                }
-                STY_ZPX => {
-                    let effective_address= self.zero_page_y_addressing(&mut cycles, memory);
-
-                    memory[effective_address as usize] = self.y;
-                }
-                STY_ABS => {
-                    let effective_address= self.absolute_addressing(&mut cycles, memory);
-
-                    memory[effective_address as usize] = self.y;
+                    memory[effective_address] = self.x;
                 }
                 TAX => {
                     self.x = self.a;
                     cycles -= 1;
 
-                    if self.x == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.x == 0);
             
-                    if self.x & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }  
+                    self.p.set_negative(self.x & 0b10000000 == 0b10000000);
                 }
                 TAY => {
                     self.y = self.a;
                     cycles -= 1;
 
-                    if self.y == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.y == 0);
             
-                    if self.y & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }  
+                    self.p.set_negative(self.y & 0b10000000 == 0b10000000);
                 }
                 TXA => {
                     self.a = self.x;
@@ -410,13 +371,9 @@ impl CPU {
                     self.x = self.sp;
                     cycles -= 1;
 
-                    if self.x == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.x == 0);
             
-                    if self.x & 0b10000000 == 0b10000000 {
-                        self.p.set_negative(true);
-                    }  
+                    self.p.set_negative(self.x & 0b10000000 == 0b10000000);
                 }
                 TXS => {
                     self.sp = self.x;
@@ -679,9 +636,7 @@ impl CPU {
                     let bit_test = self.a & memory[effective_address as usize];
                     cycles -= 1;
                     
-                    if bit_test == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(bit_test == 0);
 
                     self.p &= Status::from_bits(bit_test & 0b11000000).unwrap();
                 }
@@ -689,9 +644,7 @@ impl CPU {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
                     let bit_test = self.a & memory[effective_address as usize];
                     
-                    if bit_test == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(bit_test == 0);
 
                     self.p &= Status::from_bits(bit_test & 0b11000000).unwrap();
                 }
@@ -1140,13 +1093,9 @@ impl CPU {
 
                     self.p.set_carry(self.y >= byte);
 
-                    if self.y == byte {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.y == byte);
 
-                    if self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000);
                 }
                 CPY_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
@@ -1154,13 +1103,9 @@ impl CPU {
 
                     self.p.set_carry(self.y >= byte);
 
-                    if self.y == byte {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.y == byte);
 
-                    if self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000);
                 }
                 CPY_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
@@ -1168,13 +1113,9 @@ impl CPU {
 
                     self.p.set_carry(self.y >= byte);
 
-                    if self.y == byte {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.y == byte);
 
-                    if self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative(self.y >= byte && ((self.y - byte) & 0b10000000) == 0b10000000);
                 }
                 INC_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
@@ -1191,13 +1132,9 @@ impl CPU {
                     memory[effective_address as usize] = data;
                     cycles -= 1;
 
-                    if data == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(data == 0);
 
-                    if (data & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((data & 0b10000000) == 0b10000000);
                 }
                 INC_ZPX => {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
@@ -1214,13 +1151,9 @@ impl CPU {
                     memory[effective_address as usize] = data;
                     cycles -= 1;
 
-                    if data == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(data == 0);
 
-                    if (data & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((data & 0b10000000) == 0b10000000);
                 }
                 INC_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
@@ -1237,13 +1170,9 @@ impl CPU {
                     memory[effective_address as usize] = data;
                     cycles -= 1;
 
-                    if data == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(data == 0);
 
-                    if (data & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((data & 0b10000000) == 0b10000000);
                 }
                 INC_ABSX => {
                     let address = self.fetch_word(&mut cycles, memory);
@@ -1265,13 +1194,9 @@ impl CPU {
                     memory[effective_address as usize] = data;
                     cycles -= 1;
 
-                    if data == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(data == 0);
 
-                    if (data & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((data & 0b10000000) == 0b10000000);
                 }
                 INX => {
                     self.x += 1;
@@ -1284,13 +1209,9 @@ impl CPU {
                     self.y += 1;
                     cycles -= 1;
 
-                    if self.y == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.y == 0);
 
-                    if (self.y & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((self.y & 0b10000000) == 0b10000000);
                 }
                 DEC_ZP => {
                     let effective_address = self.zero_page_addressing(&mut cycles, memory);
@@ -1307,13 +1228,9 @@ impl CPU {
                     memory[effective_address as usize] = data;
                     cycles -= 1;
 
-                    if data == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(data == 0);
 
-                    if (data & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((data & 0b10000000) == 0b10000000);
                 }
                 DEC_ZPX => {
                     let effective_address = self.zero_page_x_addressing(&mut cycles, memory);
@@ -1330,13 +1247,9 @@ impl CPU {
                     memory[effective_address as usize] = data;
                     cycles -= 1;
 
-                    if data == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(data == 0);
 
-                    if (data & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((data & 0b10000000) == 0b10000000);
                 }
                 DEC_ABS => {
                     let effective_address = self.absolute_addressing(&mut cycles, memory);
@@ -1353,13 +1266,9 @@ impl CPU {
                     memory[effective_address as usize] = data;
                     cycles -= 1;
 
-                    if data == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(data == 0);
 
-                    if (data & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((data & 0b10000000) == 0b10000000);
                 }
                 DEC_ABSX => {
                     let address = self.fetch_word(&mut cycles, memory);
@@ -1381,35 +1290,23 @@ impl CPU {
                     memory[effective_address as usize] = data;
                     cycles -= 1;
 
-                    if data == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(data == 0);
 
-                    if (data & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((data & 0b10000000) == 0b10000000);
                 }
                 DEX => {
                     self.x -= 1;
 
-                    if self.x == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.x == 0);
 
-                    if (self.x & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((self.x & 0b10000000) == 0b10000000);
                 }
                 DEY => {
                     self.y -= 1;
 
-                    if self.y == 0 {
-                        self.p.set_zero(true);
-                    }
+                    self.p.set_zero(self.y == 0);
 
-                    if (self.y & 0b10000000) == 0b10000000 {
-                        self.p.set_negative(true);
-                    }
+                    self.p.set_negative((self.y & 0b10000000) == 0b10000000);
                 }
                 ASL_A => {
                     let old_a = self.a;
@@ -2188,48 +2085,30 @@ impl CPU {
     fn set_lda_flags(&mut self) {
         self.p.set_zero(self.a == 0);
 
-        if self.a & 0b10000000 == 0b10000000 {
-            self.p.set_negative(true);
-        }  
+        self.p.set_negative(self.a & 0b10000000 == 0b10000000);
     }
 
     fn set_ldx_flags(&mut self) {
         self.p.set_zero(self.x == 0);
 
-        if self.x & 0b10000000 == 0b10000000 {
-            self.p.set_negative(true);
-        } 
+        self.p.set_negative(self.x & 0b10000000 == 0b10000000);
     }
 
     fn set_ldy_flags(&mut self) {
         self.p.set_zero(self.y == 0);
 
-        if self.y & 0b10000000 == 0b10000000 {
-            self.p.set_negative(true);
-        } 
+        self.p.set_negative(self.y & 0b10000000 == 0b10000000);
     }
 
     fn set_adc_sbc_flags(&mut self, overflow: bool, initial_value: u8) {
-        if overflow {
-            println!("found carry");
-            // carry flag set
-            self.p.set_carry(true)
-        }
+        self.p.set_carry(overflow);
 
-        // on incorrect sign
-        if (initial_value & 0b10000000) != (self.a & 0b10000000) {
-            println!("found overflow");
-            // overflow flag set
-            self.p.set_overflow(true);
-        }
+        // incorrect sign means there was an overflow
+        self.p.set_overflow((initial_value & 0b10000000) != (self.a & 0b10000000));
 
         self.p.set_zero(self.a == 0);
 
         // if A has negative bit on
-        if (self.a & 0b10000000) == 0b1000000 {
-            // negative flag set
-            self.p.set_negative(true);
-
-        }
+        self.p.set_negative((self.a & 0b10000000) == 0b1000000);
     }
 }

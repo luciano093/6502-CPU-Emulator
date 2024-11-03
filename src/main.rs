@@ -1,3 +1,7 @@
+
+use std::fs::File;
+use std::io::Read;
+
 use emulator_6502::consts::*;
 use emulator_6502::memory::Memory;
 use emulator_6502::cpu::CPU;
@@ -30,6 +34,12 @@ fn main() {
     mem[0xE011] = RTS; // 6
     mem[0xE012] = LDY_IM; // 6
     mem[0xE013] = 0x01; // 6
+
+    let mut file = File::open("./start").unwrap();
+    let written = file.read(&mut mem.bytes[..]).unwrap();
+
+    println!("written: {}", written);
+    println!("mem 0xE000: {:04X}", mem[0xE000]);
 
     cpu.execute(68, &mut mem);
 
